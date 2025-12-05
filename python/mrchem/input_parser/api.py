@@ -550,6 +550,9 @@ def stencil() -> JSONDict:
                                         {   'default': False,
                                             'name': 'write_orbitals_txt',
                                             'type': 'bool'},
+                                        {   'default': [],
+                                            'name': 'write_integrals',
+                                            'type': 'List[str]'},
                                         {   'default': '10 * '
                                                        "user['world_prec']",
                                             'name': 'orbital_thrs',

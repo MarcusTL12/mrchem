@@ -161,6 +161,10 @@ def write_scf_calculation(user_dict, origin):
             "file_phi_a": path_orbitals + "/phi_a_scf",
             "file_phi_b": path_orbitals + "/phi_b_scf",
         }
+
+    if user_dict["SCF"]["write_integrals"]:
+        scf_dict["write_integrals"] = user_dict["SCF"]["write_integrals"]
+
     if user_dict["SCF"]["run"]:
         scf_dict["scf_solver"] = write_scf_solver(user_dict, wf_dict)
 

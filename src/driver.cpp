@@ -118,7 +118,8 @@ bool guess_orbitals(const json &input, Molecule &mol);
 bool guess_energy(const json &input, Molecule &mol, FockBuilder &F);
 void write_orbitals(const json &input, Molecule &mol);
 void write_orbitals_txt(const json &input, Molecule &mol);
-void calc_properties(const json &input, Molecule &mol, const json &json_fock);
+void write_integrals(const json &input, Molecule &mol);
+void calc_properties(const json &input, Molecule &mol, const json &json_fock, FockBuilder &F);
 void plot_quantities(const json &input, Molecule &mol);
 } // namespace scf
 
@@ -320,7 +321,8 @@ json driver::scf::run(const json &json_scf, Molecule &mol) {
     if (json_out["success"]) {
         if (json_scf.contains("write_orbitals_txt")) scf::write_orbitals_txt(json_scf["write_orbitals_txt"], mol);
         if (json_scf.contains("write_orbitals")) scf::write_orbitals(json_scf["write_orbitals"], mol);
-        if (json_scf.contains("properties")) scf::calc_properties(json_scf["properties"], mol, json_fock);
+        if (json_scf.contains("write_integrals")) scf::write_integrals(json_scf["write_integrals"], mol);
+        if (json_scf.contains("properties")) scf::calc_properties(json_scf["properties"], mol, json_fock, F);
         if (json_scf.contains("plots")) scf::plot_quantities(json_scf["plots"], mol);
     }
 
@@ -764,6 +766,24 @@ void driver::scf::plot_quantities(const json &json_plot, Molecule &mol) {
     }
 
     mrcpp::print::footer(1, t_tot, 2);
+}
+
+void driver::scf::write_integrals(const json &json_integrals, Molecule &mol, FockBuilder &F) {
+    for (const auto &integral_name : json_integrals) {
+        if (integral_name == "overlap") {
+            std::printf("Computing overlap integral!\n");
+        } else if (integral_name == "kinetic") {
+            std::printf("Computing kinetic integral!\n");
+        } else if (integral_name == "nuclear") {
+            std::printf("Computing nuclear integral!\n");
+
+            auto &orbitals = mol.getOrbitals();
+
+            auto integral_matrix = F.getNuclearOperator()(orbitals, orbitals)
+        } else {
+            MSG_ERROR("Unimplemented integral type: " + std::string(integral_name));
+        }
+    }
 }
 
 /** @brief Run linear response SCF calculation
