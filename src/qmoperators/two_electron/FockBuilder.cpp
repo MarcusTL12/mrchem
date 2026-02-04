@@ -313,6 +313,7 @@ OrbitalVector FockBuilder::buildHelmholtzArgumentZORA(OrbitalVector &Phi, Orbita
     // Compute OrbitalVectors
     Timer t_1;
     OrbitalVector termOne = operOne(Phi);
+
     mrcpp::print::time(2, "Computing gradient term", t_1);
 
     Timer t_2;
