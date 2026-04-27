@@ -27,14 +27,15 @@ import math
 
 from .helpers import (parse_wf_method, write_rsp_calc, write_scf_fock,
                       write_scf_guess, write_scf_occupancies, write_scf_plot,
-                      write_scf_properties, write_scf_solver,
-                      write_lag_fock, write_lag_solver)
+                      write_scf_properties, write_scf_solver, write_pseudo_potential, 
+                      write_lag_fock, write_lag_solver, write_external_solver)
 from .periodictable import PeriodicTable as PT
 from .periodictable import PeriodicTableByZ as PT_Z
 from .validators import MoleculeValidator
 
 
 def translate_input(user_dict):
+
     # get the origin in the desired units of measure
     origin = user_dict["world_origin"]
     pc = user_dict["Constants"]
@@ -47,6 +48,13 @@ def translate_input(user_dict):
     mra_dict = write_mra(user_dict, mol_dict)
     scf_dict = write_scf_calculation(user_dict, origin)
     rsp_dict = write_rsp_calculations(user_dict, mol_dict, origin)
+    pseudo_potential_dict = write_pseudo_potential(user_dict, mol_dict)
+    mol_dict["pseudopotentials"] = pseudo_potential_dict
+
+    if mol_dict["pseudopotentials"]["use_pp"]:
+        scf_dict["fock_operator"]["pseudopotential"] = {
+            "pp_prec": mol_dict["pseudopotentials"]["pp_prec"]
+        }
     lag_dict = write_lag_calculations(user_dict)
 
     # piece everything together
@@ -164,6 +172,10 @@ def write_scf_calculation(user_dict, origin):
             "file_phi_a": path_orbitals + "/phi_a_scf",
             "file_phi_b": path_orbitals + "/phi_b_scf",
         }
+    if user_dict["SCF"]["write_density"]:
+        scf_dict["write_density"] = {
+            "file_density": path_orbitals + "/density_scf",
+        }
     if user_dict["SCF"]["run"]:
         scf_dict["scf_solver"] = write_scf_solver(user_dict, wf_dict)
 
@@ -191,7 +203,7 @@ def write_lag_calculations(user_dict):
     lag_dict = {}
     lag_dict["fock_operator"] = write_lag_fock(user_dict)
     lag_dict["initial_guess"] = write_scf_guess(user_dict, wf_dict)
-
+    lag_dict["external_solver"] = write_external_solver(user_dict)
     path_orbitals = user_dict["Lagrangian"]["path_orbitals"]
     if user_dict["Lagrangian"]["write_orbitals"]:
         lag_dict["write_orbitals"] = {

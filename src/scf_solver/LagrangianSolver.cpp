@@ -59,27 +59,22 @@ json LagrangianSolver::optimize(Molecule &mol, FockBuilder &F, ChemTensorSolver 
     //Timer t_tot;
     json json_out;
 
-    const Nuclei &nucs = mol.getNuclei();
+    //Nuclei nucs = mol.getNuclei();
     OrbitalVector &Phi_n = mol.getOrbitals();
     double prec = 1e-3;
 
-    S.set_integrals(Phi_n, F);
-    ComplexMatrix one_int = *(S.get_one_body_integrals());
-    ComplexTensorR4 two_int = *(S.get_two_body_integrals());
-
-    // print one-body integral
-    std::cout << "One-body integrals" << std::endl;
-    for(int i=0; i<one_int.rows(); i++){
-        for(int j=0; j<one_int.cols(); j++){
-            std::cout << one_int(i,j) << " ";
-        }
-        std::cout << std::endl;
-    }
-    std::cout << std::endl;
+    S.set_integrals(Phi_n);
 
     int nIter = 0;
     bool converged = false;
     
+    S.optimize();
+    std::cout << "Energy: " << S.get_energy() << std::endl;
+    
+    // ComplexMatrix one_rdm = *(S.get_one_rdm());
+    // ComplexTensorR4 two_rdm = *(S.get_two_rdm());
+    
+
     // end
     F.clear();
     json_out["converged"] = converged;

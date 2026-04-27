@@ -49,6 +49,7 @@
 #include "properties/NMRShielding.h"
 #include "properties/OrbitalEnergies.h"
 #include "properties/Polarizability.h"
+#include "properties/PopulationAnalysis.h"
 #include "properties/QuadrupoleMoment.h"
 #include "properties/SCFEnergy.h"
 #include "qmfunctions/Orbital.h"
@@ -85,7 +86,38 @@ public:
     mrcpp::Coord<3> calcCenterOfMass() const;
     mrcpp::Coord<3> calcCenterOfCharge() const;
 
+    /**
+     * @brief get all nuclei
+     */
     auto &getNuclei() { return this->nuclei; }
+
+    /**
+     * @brief get_pseudo_potential_nuclei
+     */
+    Nuclei getPseudoPotentialNuclei() const;
+
+
+    /**
+     * @brief return true if the molecule has a pseudopotential, false otherwise
+     */
+    bool hasPseudopotential() const;
+
+    /**
+     * @brief return true if the molecule has a NLCC pseudopotential, false otherwise
+     */
+    bool hasNLCCPseudopotential() const;
+
+    /**
+     * @brief return trun if the molecule has a pseudopotential with projectors, false otherwise
+     */
+    bool hasProjectorPseudopotential() const;
+
+    /**
+     * @brief get all electron nuclei
+     */
+    Nuclei getAllElectronNuclei() const;
+
+
     auto &getOrbitals() { return *this->orbitals_0; }
     auto &getOrbitalsX() { return *this->orbitals_x; }
     auto &getOrbitalsY() { return *this->orbitals_y; }
@@ -123,6 +155,7 @@ public:
     NMRShielding &getNMRShielding(const std::string &id) { return this->nmr_shielding.at(id); }
     GeometricDerivative &getGeometricDerivative(const std::string &id) { return this->geometric_derivative.at(id); }
     HirshfeldCharges &getHirshfeldCharges(const std::string &id) { return this->hirshfeld_charges.at(id); }
+    PopulationAnalysis &getPopulationAnalysis(const std::string &id) { return this->population_analysis.at(id); }
     
     void calculateOrbitalPositions();
     void printOrbitalPositions() const;
@@ -137,6 +170,7 @@ public:
     PropertyMap<NMRShielding> &getNMRShieldings() { return this->nmr_shielding; }
     PropertyMap<GeometricDerivative> &getGeometricDerivatives() { return this->geometric_derivative; }
     PropertyMap<HirshfeldCharges> &getHirshfeldCharges() { return this->hirshfeld_charges; }
+    PropertyMap<PopulationAnalysis> &getPopulationAnalyses() { return this->population_analysis; }
 
 protected:
     int charge{0};
@@ -160,6 +194,7 @@ protected:
     PropertyMap<NMRShielding> nmr_shielding{};
     PropertyMap<GeometricDerivative> geometric_derivative{};
     PropertyMap<HirshfeldCharges> hirshfeld_charges{};
+    PropertyMap<PopulationAnalysis> population_analysis{};
     ComplexVector OrbitalPositionsX{};
     ComplexVector OrbitalPositionsY{};
     ComplexVector OrbitalPositionsZ{};

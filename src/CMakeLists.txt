@@ -34,6 +34,7 @@ add_subdirectory(environment)
 add_subdirectory(external_solvers)
 add_subdirectory(mrdft)
 add_subdirectory(properties)
+add_subdirectory(pseudopotential)
 add_subdirectory(qmfunctions)
 add_subdirectory(qmoperators)
 add_subdirectory(scf_solver)
@@ -52,6 +53,7 @@ target_link_libraries(mrchem
   PRIVATE
     Eigen3::Eigen
   PUBLIC
+    Libxc::xc
     XCFun::xcfun
     MRCPP::mrcpp
     nlohmann_json::nlohmann_json

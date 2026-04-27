@@ -25,37 +25,28 @@
 
 #pragma once
 
-#include "qmoperators/QMPotential.h"
-#include "qmfunctions/Orbital.h"
+#include <string>
+
+#include "qmfunctions/qmfunction_fwd.h"
+
+/** @file nao.h
+ *
+ * @brief Module for generating initial guess with numeric atomic orbitals (NAOs)
+ *
+ * The initial_guess::nao namespace provides functionality to setup an initial
+ * guess from numeric atomic orbitals (NAOs).
+ */
 
 namespace mrchem {
+class Nuclei;
 
-class GenericTwoOrbitalsPotential : public QMPotential {
-public:
-    explicit GenericTwoOrbitalsPotential(std::shared_ptr<mrcpp::PoissonOperator> P, std::shared_ptr<OrbitalVector> Phi = nullptr, bool mpi_share = false);
-    ~GenericTwoOrbitalsPotential() override = default; //TODO: explicitly clear? clear it from FockBuilder?
+namespace initial_guess {
+namespace nao {
 
-    void setup(std::shared_ptr<OrbitalVector> Phi, double prec);
-    void set_pair(int j, int l);
+bool setup(OrbitalVector &Phi, double prec, const Nuclei &nucs, int n_mix, double alpha_mix, std::string nao_directory = "");
+void project_atomic_densities(double prec, Density &rho_tot, const Nuclei &nucs);
+void project_atomic_orbitals(double prec, OrbitalVector &Phi, const Nuclei &nucs, std::string nao_directory = "");
 
-    Orbital apply(Orbital inp) override;
-    
-    friend class GenericTwoOrbitalsOperator;
-
-protected:
-    std::shared_ptr<OrbitalVector> orbitals;         
-    std::shared_ptr<mrcpp::PoissonOperator> poisson;
-    int j;
-    int l;
-    double prec;
-    std::shared_ptr<Orbital> g_jl{nullptr};
-
-    auto &getPoisson() { return this->poisson; }
-
-    //void setup(double prec) override;
-    //void clear() override;
-
-    void set_g_jl();
-};
-
+} // namespace nao
+} // namespace initial_guess
 } // namespace mrchem
