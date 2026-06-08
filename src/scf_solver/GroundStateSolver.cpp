@@ -299,14 +299,22 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         Psi.clear();
         F.clear();
 
+        ComplexMatrix F_mat_old = F_mat;
+
         // Orthonormalize
         orbital::orthonormalize(orb_prec, Phi_np1, F_mat);
+
+        if (F.getReactionOperator() != nullptr) F.getReactionOperator()->updateMOResidual(err_t);
+        F.setup(orb_prec);
+        ComplexMatrix F_mat_np1 = F(Phi_np1, Phi_np1);
+        ComplexMatrix dF = F_mat_np1 - F_mat;
+        F.clear();
 
         // Compute orbital updates
         OrbitalVector dPhi_n = orbital::add(1.0, Phi_np1, -1.0, Phi_n);
         Phi_np1.clear();
 
-        kain.accelerate(orb_prec, Phi_n, dPhi_n);
+        kain.accelerate(orb_prec, Phi_n, dPhi_n, &F_mat_old, &dF);
 
         // Compute errors
         errors = orbital::get_norms(dPhi_n);
@@ -372,11 +380,12 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         if (needLocalization(nIter, converged)) {
             ComplexMatrix U_mat = orbital::localize(orb_prec, Phi_n, F_mat);
             F.rotate(U_mat);
-            kain.rotate(U_mat, true, true);
-            // kain.clear();
+            // kain.rotate(U_mat, true, true);
+            kain.clear();
         } else if (needDiagonalization(nIter, converged)) {
             ComplexMatrix U_mat = orbital::diagonalize(orb_prec, Phi_n, F_mat);
             F.rotate(U_mat);
+            // kain.rotate(U_mat, true, false);
             kain.clear();
         }
 
