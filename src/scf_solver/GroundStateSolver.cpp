@@ -372,7 +372,8 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         if (needLocalization(nIter, converged)) {
             ComplexMatrix U_mat = orbital::localize(orb_prec, Phi_n, F_mat);
             F.rotate(U_mat);
-            kain.clear();
+            kain.rotate(U_mat, true, true);
+            // kain.clear();
         } else if (needDiagonalization(nIter, converged)) {
             ComplexMatrix U_mat = orbital::diagonalize(orb_prec, Phi_n, F_mat);
             F.rotate(U_mat);
@@ -428,6 +429,8 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
 bool GroundStateSolver::needLocalization(int nIter, bool converged) const {
     bool loc = false;
     if (not this->localize) {
+        loc = false;
+    } else if (this->rotation < 0) {
         loc = false;
     } else if (nIter <= 2 or converged) {
         loc = true;

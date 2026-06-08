@@ -76,7 +76,7 @@ public:
     void replaceOrbitals(OrbitalVector &Phi, int nHistory = 0);
     void replaceOrbitalUpdates(OrbitalVector &dPhi, int nHistory = 0);
 
-    void rotate(const ComplexMatrix &U, bool all = true);
+    void rotate(const ComplexMatrix &U, bool all = true, bool only_last = false);
     void printSizeNodes() const;
 
 protected:

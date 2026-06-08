@@ -84,7 +84,7 @@ void Accelerator::clearLinearSystem() {
  * clear history and start over. Option to rotate the last orbital
  * set or not.
  */
-void Accelerator::rotate(const ComplexMatrix &U, bool all) {
+void Accelerator::rotate(const ComplexMatrix &U, bool all, bool only_last) {
     Timer t_tot;
     int nOrbs = this->orbitals.size() - 1;
     int nFock = this->fock.size() - 1;
@@ -93,7 +93,11 @@ void Accelerator::rotate(const ComplexMatrix &U, bool all) {
         nFock += 1;
     }
     if (nOrbs <= 0) { return; }
-    for (int i = 0; i < nOrbs; i++) {
+
+    int startindex = 0;
+    if (only_last) startindex = nOrbs - 1;
+
+    for (int i = startindex; i < nOrbs; i++) {
         auto &Phi = this->orbitals[i];
         mrcpp::rotate(Phi, U);
 
