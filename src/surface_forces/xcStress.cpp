@@ -169,7 +169,7 @@ std::vector<Eigen::Matrix3d> getXCStress(unique_ptr<mrdft::MRDFT> &mrdft_p,
                                          bool isOpenShell,
                                          double prec) {
 
-    bool isGGA = mrdft_p->functional().isGGA();
+    bool isGGA = mrdft_p->functional().needsGradient();
     bool isHybrid = mrdft_p->functional().isHybrid();
     if (isHybrid) { MSG_ABORT("Exact exchange is not implemented for forces computed with surface integrals"); }
 

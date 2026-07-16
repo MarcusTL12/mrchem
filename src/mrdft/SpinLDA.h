@@ -52,8 +52,7 @@ public:
     ~SpinLDA() override = default;
 
     bool isSpin() const override { return true; }
-    bool isGGA() const override { return false; }
-    bool isMetaGGA() const override { return false; }
+    bool needsGradient() const override { return false; }
 
     int numIn() const override { return 2; }                 ///< @brief Number of input components: 1 densities (alpha, beta)
     int numOut() const override { return xclib->getnOut(); } ///< @brief Number of raw outputs provided by the xc backend

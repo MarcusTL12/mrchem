@@ -54,8 +54,7 @@ public:
     ~SpinGGA() override = default;
 
     bool isSpin() const override { return true; }
-    bool isGGA() const override { return true; }
-    bool isMetaGGA() const override { return false; }
+    bool needsGradient() const override { return true; }
 
     int numIn() const override { return 8; }                 ///< @brief Number of input components: 2 densities + 6 gradient components
     int numOut() const override { return xclib->getnOut(); } ///< @brief Number of raw outputs provided by the xc backend

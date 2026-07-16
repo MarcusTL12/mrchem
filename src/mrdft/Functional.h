@@ -113,11 +113,10 @@ public:
     /**
      * Functional type querying
      */
-    bool isLDA() const { return not(isGGA() or isMetaGGA()); }          ///< @return True if functional is LDA type (not a GGA or meta-GGA)
     bool isHybrid() const { return (std::abs(amountEXX()) > 1.0e-10); } ///< @return True if functional is a hybrid (includes exact exchange)
     virtual bool isSpin() const = 0;                                    ///< @brief Returns True if the functional object is spin-polarized
-    virtual bool isGGA() const = 0;                                     ///< @brief Returns True if the functional is a GGA
-    virtual bool isMetaGGA() const = 0;                                 ///< @brief Returns True if the functional is a Meta-GGA
+
+    virtual bool needsGradient() const = 0;
 
     virtual int numIn() const = 0;  ///< Fetches number of variables in the input matrix
     virtual int numOut() const = 0; ///< Fetches number of variables in the output matrix
