@@ -29,6 +29,7 @@
 #include <stdlib.h>
 
 #include "Factory.h"
+#include "XCInput.h"
 #include "utils/print_utils.h"
 
 namespace mrdft {
@@ -123,6 +124,8 @@ void Functional::makepot(mrcpp::FunctionTreeVector<3> &inp, std::vector<mrcpp::F
     int ncoefs = rho0->getTDim() * rho0->getKp1_d();
     int spinsize = densityChannels();
     int xclib_inpsize = spinsize * (usesGradients() ? 4 : 1);
+
+    XCInput xc_inp(ncoefs, isSpin(), usesGradients());
 
     Eigen::MatrixXd xclib_inp(ncoefs, xclib_inpsize); // input for xcfun
     double *coef = node.getCoefs();
