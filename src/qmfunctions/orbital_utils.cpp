@@ -759,6 +759,13 @@ DoubleVector orbital::get_occupations(const OrbitalVector &Phi) {
     return occup;
 }
 
+DoubleVector orbital::get_masses(const OrbitalVector &Phi) {
+    int nOrbs = Phi.size();
+    DoubleVector masses = DoubleVector::Zero(nOrbs);
+    for (int i = 0; i < nOrbs; i++) masses(i) = Phi[i].particle_mass();
+    return masses;
+}
+
 /** @brief Assigns occupation to each orbital
  *
  * Length of input vector must match the number of orbitals in the set.
@@ -767,6 +774,13 @@ DoubleVector orbital::get_occupations(const OrbitalVector &Phi) {
 void orbital::set_occupations(OrbitalVector &Phi, const DoubleVector &occup) {
     if (Phi.size() != static_cast<size_t>(occup.size())) MSG_ERROR("Size mismatch");
     for (size_t i = 0; i < Phi.size(); i++) Phi[i].occ() = occup(i);
+}
+
+void orbital::scale_orbitals(OrbitalVector &Phi, const DoubleVector &coeffs) {
+    if (Phi.size() != static_cast<size_t>(coeffs.size())) MSG_ERROR("Size mismatch");
+    for (size_t i = 0; i < Phi.size(); i++) {
+        if (mrcpp::mpi::my_func(Phi[i])) Phi[i].rescale(coeffs[i]);
+    }
 }
 
 /** @brief Returns a vector containing the orbital square norms */

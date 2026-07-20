@@ -80,9 +80,11 @@ bool orbital_vector_is_sane(const OrbitalVector &Phi);
 
 void set_spins(OrbitalVector &Phi, const IntVector &spins);
 void set_occupations(OrbitalVector &Phi, const DoubleVector &occ);
+void scale_orbitals(OrbitalVector &Phi, const DoubleVector &coeffs);
 
 IntVector get_spins(const OrbitalVector &Phi);
 DoubleVector get_occupations(const OrbitalVector &Phi);
+DoubleVector get_masses(const OrbitalVector &Phi);
 DoubleVector get_norms(const OrbitalVector &Phi);
 DoubleVector get_squared_norms(const OrbitalVector &Phi);
 DoubleVector calc_eigenvalues(const OrbitalVector &Phi, const ComplexMatrix &F_mat);

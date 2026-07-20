@@ -46,6 +46,11 @@ ComplexMatrix calc_kinetic_matrix_component_symmetrized(int d, MomentumOperator 
 
 double qmoperator::calc_kinetic_trace(MomentumOperator &p, OrbitalVector &Phi) {
     DoubleVector eta = orbital::get_occupations(Phi).cast<double>();
+
+    for (size_t i = 0; i < Phi.size(); i++) {
+        eta[i] /= Phi[i].particle_mass();
+    }
+
     DoubleVector norms = DoubleVector::Zero(Phi.size());
     {
         OrbitalVector dPhi = p[0](Phi);
@@ -62,6 +67,7 @@ double qmoperator::calc_kinetic_trace(MomentumOperator &p, OrbitalVector &Phi) {
     return 0.5 * eta.dot(norms);
 }
 
+// TODO: use masses for ZORA:
 ComplexDouble qmoperator::calc_kinetic_trace(MomentumOperator &p, RankZeroOperator &V, OrbitalVector &Phi) {
     ComplexDouble out = {0.0, 0.0};
     {
@@ -127,12 +133,22 @@ ComplexMatrix qmoperator::calc_kinetic_matrix_component(int d, MomentumOperator 
     int nNodes = 0, sNodes = 0;
     if (&bra == &ket) {
         OrbitalVector dKet = p[d](ket);
+
+        DoubleVector ketScale = orbital::get_masses(ket).cwiseSqrt().cwiseInverse();
+        orbital::scale_orbitals(dKet, ketScale);
+
         nNodes += orbital::get_n_nodes(dKet);
         sNodes += orbital::get_size_nodes(dKet);
         T = mrcpp::calc_overlap_matrix(dKet);
     } else {
         OrbitalVector dBra = p[d](bra);
         OrbitalVector dKet = p[d](ket);
+
+        DoubleVector ketScale = orbital::get_masses(ket).cwiseSqrt().cwiseInverse();
+        DoubleVector braScale = orbital::get_masses(bra).cwiseSqrt().cwiseInverse();
+        orbital::scale_orbitals(dKet, ketScale);
+        orbital::scale_orbitals(dBra, braScale);
+
         nNodes += orbital::get_n_nodes(dBra);
         nNodes += orbital::get_n_nodes(dKet);
         sNodes += orbital::get_size_nodes(dBra);
