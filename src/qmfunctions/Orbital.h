@@ -53,6 +53,9 @@ namespace mrchem {
 // Note: cannot only define "getSpin()", because sometime we only have a CompFunction, not an Orbital
 #define spin() func_ptr->data.n1[0]
 #define occ() func_ptr->data.d1[0]
+#define particle_type() func_ptr->data.n1[1]
+#define particle_charge() func_ptr->data.d1[1]
+#define particle_mass() func_ptr->data.d1[2]
 class Orbital : public mrcpp::CompFunction<3> {
 public:
     Orbital() = default;

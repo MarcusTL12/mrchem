@@ -39,9 +39,13 @@ Orbital::Orbital(SPIN::type spin)
         : mrcpp::CompFunction<3>(spin) {
     if (this->spin() < 0) INVALID_ARG_ABORT;
     // d1 is used to store occupancy
-    if (this->spin() == SPIN::Paired) this->func_ptr->data.d1[0] = 2;
-    if (this->spin() == SPIN::Alpha) this->func_ptr->data.d1[0] = 1;
-    if (this->spin() == SPIN::Beta) this->func_ptr->data.d1[0] = 1;
+    if (this->spin() == SPIN::Paired) this->occ() = 2;
+    if (this->spin() == SPIN::Alpha) this->occ() = 1;
+    if (this->spin() == SPIN::Beta) this->occ() = 1;
+
+    this->particle_type() = 0;
+    this->particle_charge() = -1.0;
+    this->particle_mass() = 1.0;
 }
 
 /** @brief Constructor
@@ -57,10 +61,13 @@ Orbital::Orbital(int spin, double occ, int rank)
     if (this->spin() < 0) INVALID_ARG_ABORT;
     if (this->occ() < 0) {
         // d1 is defined as occupancy
-        if (this->spin() == SPIN::Paired) this->func_ptr->data.d1[0] = 2;
-        if (this->spin() == SPIN::Alpha) this->func_ptr->data.d1[0] = 1;
-        if (this->spin() == SPIN::Beta) this->func_ptr->data.d1[0] = 1;
+        if (this->spin() == SPIN::Paired) this->occ() = 2;
+        if (this->spin() == SPIN::Alpha) this->occ() = 1;
+        if (this->spin() == SPIN::Beta) this->occ() = 1;
     }
+    this->particle_type() = 0;
+    this->particle_charge() = -1.0;
+    this->particle_mass() = 1.0;
     this->func_ptr->rank = rank;
 }
 

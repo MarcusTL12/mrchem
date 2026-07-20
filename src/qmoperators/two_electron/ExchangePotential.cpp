@@ -96,7 +96,7 @@ void ExchangePotential::rotate(const ComplexMatrix &U) {
  *
  */
 double ExchangePotential::getSpinFactor(Orbital phi_i, Orbital phi_j) const {
-    double out = 0.0;	
+    double out = 0.0;
     if (phi_i.spin() == SPIN::Paired && phi_j.spin() == SPIN::Paired)
         // this is now 0.5 instead of 1.0 to cancel out the occupancies that have been added into the XX calculation
         out = 0.5; 
@@ -105,6 +105,11 @@ double ExchangePotential::getSpinFactor(Orbital phi_i, Orbital phi_j) const {
     else if (phi_i.spin() == SPIN::Paired || phi_j.spin() == SPIN::Paired)
         // j_fac is not used correctly (assumes symmetry) for this option to function, so we want to raise an error message
         MSG_ABORT("Mismatch in paired/unpaired spins");
+
+    // No exchange between different particle types
+    if (phi_i.particle_type() != phi_j.particle_type())
+        out = 0.0;
+
     return out;
 }
 
