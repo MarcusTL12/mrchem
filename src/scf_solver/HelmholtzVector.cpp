@@ -139,7 +139,7 @@ OrbitalVector HelmholtzVector::apply(RankZeroOperator &V, OrbitalVector &Phi, Or
  * Computes output as: out_i = -2H_i[phi_i]
  */
 Orbital HelmholtzVector::apply(int i, const Orbital &phi) const {
-    ComplexDouble mu_i = std::sqrt(-2.0 * this->lambda(i));
+    ComplexDouble mu_i = std::sqrt(-2.0 * this->lambda(i) * phi.particle_mass());
     if (std::abs(mu_i.imag()) > mrcpp::MachineZero) MSG_ABORT("Mu cannot be complex");
     mrcpp::HelmholtzOperator H(*MRA, mu_i.real(), this->prec);
 
@@ -154,7 +154,7 @@ Orbital HelmholtzVector::apply(int i, const Orbital &phi) const {
         }
     }
     mrcpp::apply(this->prec, out, H, phi, metric, -1, true); // Absolute prec
-    out.rescale(-1.0 / (2.0 * mrcpp::pi));
+    out.rescale(-phi.particle_mass() / (2.0 * mrcpp::pi));
 
     return out;
 }

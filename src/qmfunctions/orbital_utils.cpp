@@ -347,7 +347,7 @@ void orbital::save_orbitals(OrbitalVector &Phi, const std::string &file, int spi
 
     auto n = 0;
     for (size_t i = 0; i < Phi.size(); i++) {
-        if ((Phi[i].spin() == spin) or (spin < 0)) {
+        if ((Phi.spin(i) == spin) or (spin < 0)) {
             Timer t1;
             std::stringstream orbname;
             orbname << file << "_idx_" << n;
@@ -655,24 +655,24 @@ int orbital::size_doubly(const OrbitalVector &Phi) {
 /** @brief Returns the number of paired orbitals */
 int orbital::size_paired(const OrbitalVector &Phi) {
     int nPaired = 0;
-    for (auto &phi_i : Phi)
-        if (phi_i.spin() == SPIN::Paired) nPaired++;
+    for (size_t i = 0; i < Phi.size(); i++)
+        if (Phi.spin(i) == SPIN::Paired) nPaired++;
     return nPaired;
 }
 
 /** @brief Returns the number of alpha orbitals */
 int orbital::size_alpha(const OrbitalVector &Phi) {
     int nAlpha = 0;
-    for (auto &phi_i : Phi)
-        if (phi_i.spin() == SPIN::Alpha) nAlpha++;
+    for (size_t i = 0; i < Phi.size(); i++)
+        if (Phi.spin(i) == SPIN::Alpha) nAlpha++;
     return nAlpha;
 }
 
 /** @brief Returns the number of beta orbitals */
 int orbital::size_beta(const OrbitalVector &Phi) {
     int nBeta = 0;
-    for (auto &phi_i : Phi)
-        if (phi_i.spin() == SPIN::Beta) nBeta++;
+    for (size_t i = 0; i < Phi.size(); i++)
+        if (Phi.spin(i) == SPIN::Beta) nBeta++;
     return nBeta;
 }
 
@@ -693,15 +693,15 @@ int orbital::get_multiplicity(const OrbitalVector &Phi) {
  */
 double orbital::get_electron_number(const OrbitalVector &Phi, int spin) {
     double nElectrons = 0.0;
-    for (auto &phi_i : Phi) {
+    for (size_t i = 0; i < Phi.size(); i++) {
         if (spin == SPIN::Paired) {
-            nElectrons += phi_i.occ();
+            nElectrons += Phi[i].occ();
         } else if (spin == SPIN::Alpha) {
-            if (phi_i.spin() == SPIN::Paired) {nElectrons += 0.5 * phi_i.occ();}
-            else if (phi_i.spin() == SPIN::Alpha) {nElectrons += phi_i.occ();}
+            if (Phi.spin(i) == SPIN::Paired) {nElectrons += 0.5 * Phi[i].occ();}
+            else if (Phi.spin(i) == SPIN::Alpha) {nElectrons += Phi[i].occ();}
         } else if (spin == SPIN::Beta) {
-            if (phi_i.spin() == SPIN::Paired) {nElectrons += 0.5 * phi_i.occ();}
-            else if (phi_i.spin() == SPIN::Beta) {nElectrons += phi_i.occ();}
+            if (Phi.spin(i) == SPIN::Paired) {nElectrons += 0.5 * Phi[i].occ();}
+            else if (Phi.spin(i) == SPIN::Beta) {nElectrons += Phi[i].occ();}
         } else {
             MSG_ERROR("Invalid spin argument");
         }
@@ -748,7 +748,7 @@ IntVector orbital::get_spins(const OrbitalVector &Phi) {
  */
 void orbital::set_spins(OrbitalVector &Phi, const IntVector &spins) {
     if (Phi.size() != static_cast<size_t>(spins.size())) MSG_ERROR("Size mismatch");
-    for (size_t i = 0; i < Phi.size(); i++) Phi[i].spin() = i;
+    for (size_t i = 0; i < Phi.size(); i++) Phi.spin(i) = i;
 }
 
 /** @brief Returns a vector containing the orbital occupations */
@@ -759,6 +759,13 @@ DoubleVector orbital::get_occupations(const OrbitalVector &Phi) {
     return occup;
 }
 
+DoubleVector orbital::get_masses(const OrbitalVector &Phi) {
+    int nOrbs = Phi.size();
+    DoubleVector masses = DoubleVector::Zero(nOrbs);
+    for (int i = 0; i < nOrbs; i++) masses(i) = Phi[i].particle_mass();
+    return masses;
+}
+
 /** @brief Assigns occupation to each orbital
  *
  * Length of input vector must match the number of orbitals in the set.
@@ -767,6 +774,13 @@ DoubleVector orbital::get_occupations(const OrbitalVector &Phi) {
 void orbital::set_occupations(OrbitalVector &Phi, const DoubleVector &occup) {
     if (Phi.size() != static_cast<size_t>(occup.size())) MSG_ERROR("Size mismatch");
     for (size_t i = 0; i < Phi.size(); i++) Phi[i].occ() = occup(i);
+}
+
+void orbital::scale_orbitals(OrbitalVector &Phi, const DoubleVector &coeffs) {
+    if (Phi.size() != static_cast<size_t>(coeffs.size())) MSG_ERROR("Size mismatch");
+    for (size_t i = 0; i < Phi.size(); i++) {
+        if (mrcpp::mpi::my_func(Phi[i])) Phi[i].rescale(coeffs[i]);
+    }
 }
 
 /** @brief Returns a vector containing the orbital square norms */

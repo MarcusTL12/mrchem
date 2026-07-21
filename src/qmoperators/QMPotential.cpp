@@ -137,6 +137,12 @@ void QMPotential::calc(mrcpp::CompFunction<3> &out, mrcpp::CompFunction<3> &inp,
 
     mrcpp::CompFunction<3> &V = *this;
     double coef = 1.0;
+
+    // If input has a particle type, multiply by charge
+    if (inp.func_ptr->data.n1[0] != 0) {
+        coef = -inp.particle_charge();
+    }
+
     mrcpp::copy_grid(out, inp);
     mrcpp::multiply(prec, out, coef, inp, V, adap);
 }

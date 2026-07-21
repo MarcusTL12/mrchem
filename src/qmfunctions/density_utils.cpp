@@ -52,10 +52,10 @@ namespace density {
 Density compute(double prec, Orbital phi, DensityType spin);
 void compute_local_X(double prec, Density &rho, OrbitalVector &Phi, OrbitalVector &X, DensityType spin);
 void compute_local_XY(double prec, Density &rho, OrbitalVector &Phi, OrbitalVector &X, OrbitalVector &Y, DensityType spin);
-double compute_occupation(const Orbital &phi, DensityType dens_spin);
+double compute_charge_occupation(const Orbital &phi, DensityType dens_spin);
 } // namespace density
 
-double density::compute_occupation(const Orbital &phi, DensityType dens_spin) {
+double density::compute_charge_occupation(const Orbital &phi, DensityType dens_spin) {
     double occ_a(0.0), occ_b(0.0), occ_p(0.0);
     if (phi.spin() == SPIN::Alpha) occ_a = static_cast<double>(phi.occ());
     if (phi.spin() == SPIN::Beta) occ_b = static_cast<double>(phi.occ());
@@ -66,6 +66,8 @@ double density::compute_occupation(const Orbital &phi, DensityType dens_spin) {
     if (dens_spin == DensityType::Alpha) occup = occ_a + 0.5 * occ_p;
     if (dens_spin == DensityType::Beta) occup = occ_b + 0.5 * occ_p;
     if (dens_spin == DensityType::Spin) occup = occ_a - occ_b;
+
+    occup *= -phi.particle_charge();
 
     return occup;
 }
@@ -78,7 +80,7 @@ double density::compute_occupation(const Orbital &phi, DensityType dens_spin) {
  *
  */
 Density density::compute(double prec, Orbital phi, DensityType spin) {
-    double occ = density::compute_occupation(phi, spin);
+    double occ = density::compute_charge_occupation(phi, spin);
     if (std::abs(occ) < mrcpp::MachineZero) return Density(false);
     Density rho(false);
     mrcpp::copy_grid(rho, phi);
@@ -126,7 +128,7 @@ void density::compute(double prec, Density &rho, OrbitalVector &Phi, OrbitalVect
 void density::compute_local(double prec, Density &rho, OrbitalVector &Phi, DensityType spin) {
     for (auto &phi_i : Phi) {
         if (mrcpp::mpi::my_func(phi_i)) {
-            double occ = density::compute_occupation(phi_i, spin);
+            double occ = density::compute_charge_occupation(phi_i, spin);
             if (std::abs(occ) < mrcpp::MachineZero) continue;
             Density rho_i;
             mrcpp::copy_grid(rho_i, phi_i);
@@ -162,7 +164,7 @@ void density::compute_local_X(double prec, Density &rho, OrbitalVector &Phi, Orb
         if (mrcpp::mpi::my_func(Phi[i])) {
             if (not mrcpp::mpi::my_func(X[i])) MSG_ABORT("Inconsistent MPI distribution");
             Orbital phi_i = Phi[i];
-            double occ = density::compute_occupation(phi_i, spin);
+            double occ = density::compute_charge_occupation(phi_i, spin);
             if (std::abs(occ) < mrcpp::MachineZero) continue; // next orbital if this one is not occupied!
             Density rho_i(false);
             mrcpp::copy_grid(rho_i, phi_i);
@@ -191,7 +193,7 @@ void density::compute_local_XY(double prec, Density &rho, OrbitalVector &Phi, Or
             if (not mrcpp::mpi::my_func(X[i])) MSG_ABORT("Inconsistent MPI distribution");
             if (not mrcpp::mpi::my_func(Y[i])) MSG_ABORT("Inconsistent MPI distribution");
 
-            double occ = density::compute_occupation(phi_i, spin);
+            double occ = density::compute_charge_occupation(phi_i, spin);
             if (std::abs(occ) < mrcpp::MachineZero) continue; // next orbital if this one is not occupied!
 
             Density rho_x(false);

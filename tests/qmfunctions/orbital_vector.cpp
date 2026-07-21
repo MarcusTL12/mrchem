@@ -116,11 +116,11 @@ TEST_CASE("OrbitalVector", "[orbital_vector]") {
         REQUIRE(Phi_a.size() == 0);
         REQUIRE(Phi_b.size() == 0);
 
-        REQUIRE(Phi[0].spin() == SPIN::Paired);
-        REQUIRE(Phi[1].spin() == SPIN::Paired);
-        REQUIRE(Phi[2].spin() == SPIN::Alpha);
-        REQUIRE(Phi[3].spin() == SPIN::Beta);
-        REQUIRE(Phi[4].spin() == SPIN::Beta);
+        REQUIRE(Phi.spin(0) == SPIN::Paired);
+        REQUIRE(Phi.spin(1) == SPIN::Paired);
+        REQUIRE(Phi.spin(2) == SPIN::Alpha);
+        REQUIRE(Phi.spin(3) == SPIN::Beta);
+        REQUIRE(Phi.spin(4) == SPIN::Beta);
     }
 
     SECTION("copy vectors") {
