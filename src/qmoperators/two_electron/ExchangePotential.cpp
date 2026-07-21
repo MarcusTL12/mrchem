@@ -107,8 +107,8 @@ double ExchangePotential::getSpinFactor(Orbital phi_i, Orbital phi_j) const {
         MSG_ABORT("Mismatch in paired/unpaired spins");
 
     // No exchange between different particle types
-    if (phi_i.particle_type() != phi_j.particle_type())
-        out = 0.0;
+    // if (phi_i.particle_type() != phi_j.particle_type())
+    //     out = 0.0;
 
     return out;
 }

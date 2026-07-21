@@ -70,8 +70,8 @@ Orbital QMSpin::apply(Orbital inp) {
 
     // Flip spin for s_x and s_y
     if (this->D == 0 or this->D == 1) {
-        if (inp.spin() == SPIN::Alpha) out.setSpin(SPIN::Beta);
-        if (inp.spin() == SPIN::Beta) out.setSpin(SPIN::Alpha);
+        if (inp.spin() == SPIN::Alpha) out.spin() = SPIN::Beta;
+        if (inp.spin() == SPIN::Beta) out.spin() = SPIN::Alpha;
     }
 
     return out;

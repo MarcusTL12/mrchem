@@ -85,7 +85,7 @@ RRMaximizer::RRMaximizer(double prec, OrbitalVector &Phi) {
 
     for (int i = 0; i < this->N; i++) {
         for (int j = 0; j <= i; j++) {
-            if (Phi[i].spin() != Phi[j].spin()) MSG_ERROR("Spins must be separated before localization");
+            if (Phi.spin(i) != Phi.spin(j)) MSG_ERROR("Spins must be separated before localization");
             this->r_i_orig(i, j) = R_x(i, j).real();
             this->r_i_orig(i, j + this->N) = R_y(i, j).real();
             this->r_i_orig(i, j + 2 * this->N) = R_z(i, j).real();

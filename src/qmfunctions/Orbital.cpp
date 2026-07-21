@@ -43,7 +43,7 @@ Orbital::Orbital(SPIN::type spin)
     if (this->spin() == SPIN::Alpha) this->occ() = 1;
     if (this->spin() == SPIN::Beta) this->occ() = 1;
 
-    this->particle_type() = 0;
+    this->particle_type() = 1;
     this->particle_charge() = -1.0;
     this->particle_mass() = 1.0;
 }
@@ -65,7 +65,7 @@ Orbital::Orbital(int spin, double occ, int rank)
         if (this->spin() == SPIN::Alpha) this->occ() = 1;
         if (this->spin() == SPIN::Beta) this->occ() = 1;
     }
-    this->particle_type() = 0;
+    this->particle_type() = 1;
     this->particle_charge() = -1.0;
     this->particle_mass() = 1.0;
     this->func_ptr->rank = rank;

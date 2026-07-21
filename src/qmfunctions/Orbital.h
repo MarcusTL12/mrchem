@@ -51,9 +51,7 @@
 namespace mrchem {
 
 // Note: cannot only define "getSpin()", because sometime we only have a CompFunction, not an Orbital
-#define spin() func_ptr->data.n1[0]
 #define occ() func_ptr->data.d1[0]
-#define particle_type() func_ptr->data.n1[1]
 #define particle_charge() func_ptr->data.d1[1]
 #define particle_mass() func_ptr->data.d1[2]
 class Orbital : public mrcpp::CompFunction<3> {
@@ -69,9 +67,14 @@ public:
     Orbital& operator=(const Orbital &orb) = default;
 
     char printSpin() const;
-    void setSpin(int spin) { this->func_ptr->data.n1[0] = spin; }
     void saveOrbital(const std::string &file);
     void loadOrbital(const std::string &file);
+
+    int8_t spin() const { return reinterpret_cast<int8_t *>(func_ptr->data.n1)[0]; }
+    int8_t &spin() { return reinterpret_cast<int8_t *>(func_ptr->data.n1)[0]; }
+
+    int8_t particle_type() const { return reinterpret_cast<int8_t *>(func_ptr->data.n1)[1]; }
+    int8_t &particle_type() { return reinterpret_cast<int8_t *>(func_ptr->data.n1)[1]; }
 };
 
 // All MPI processes have a vector of full length, but
@@ -99,6 +102,12 @@ public:
     // Non-const version of operator[] to allow modification of elements
     // for write (returns rvalue). Cannot return an Orbital
     mrcpp::CompFunction<3> &operator[](int i) { return mrcpp::CompFunctionVector::operator[](i); }
+
+    int8_t spin(size_t i) const { return reinterpret_cast<const Orbital &>(mrcpp::CompFunctionVector::operator[](i)).spin(); }
+    int8_t &spin(size_t i) { return reinterpret_cast<Orbital &>(mrcpp::CompFunctionVector::operator[](i)).spin(); }
+
+    int8_t particle_type(size_t i) const { return reinterpret_cast<const Orbital &>(mrcpp::CompFunctionVector::operator[](i)).particle_type(); }
+    int8_t &particle_type(size_t i) { return reinterpret_cast<Orbital &>(mrcpp::CompFunctionVector::operator[](i)).particle_type(); }
 };
 
 } // namespace mrchem

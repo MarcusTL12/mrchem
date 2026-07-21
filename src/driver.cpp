@@ -950,9 +950,9 @@ void driver::scf::plot_quantities(const json &json_plot, Molecule &mol) {
                 t_lap.start();
                 std::stringstream name;
                 auto sp = 'u';
-                if (Phi[i].spin() == SPIN::Paired) sp = 'p';
-                if (Phi[i].spin() == SPIN::Alpha) sp = 'a';
-                if (Phi[i].spin() == SPIN::Beta) sp = 'b';
+                if (Phi.spin(i) == SPIN::Paired) sp = 'p';
+                if (Phi.spin(i) == SPIN::Alpha) sp = 'a';
+                if (Phi.spin(i) == SPIN::Beta) sp = 'b';
                 name << path << "/phi_" << sp << "_scf_idx_" << i;
                 if (line) plt.linePlot(npts, Phi[i], name.str());
                 if (surf) plt.surfPlot(npts, Phi[i], name.str());
