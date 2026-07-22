@@ -61,6 +61,7 @@ public:
     Orbital(const Orbital &orb);
     Orbital(const mrcpp::CompFunction<3> &orb);
     Orbital(int spin, double occ, int rank = -1);
+    Orbital(SPIN::type spin, int8_t particle_type, double charge, double mass);
     Orbital dagger() const;
 
     // Explicitly declare operator= to suppress -Wdeprecated-copy warnings

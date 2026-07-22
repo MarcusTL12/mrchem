@@ -48,6 +48,19 @@ Orbital::Orbital(SPIN::type spin)
     this->particle_mass() = 1.0;
 }
 
+Orbital::Orbital(SPIN::type spin, int8_t particle_type, double charge, double mass)
+        : mrcpp::CompFunction<3>(spin) {
+    if (this->spin() < 0) INVALID_ARG_ABORT;
+    // d1 is used to store occupancy
+    if (this->spin() == SPIN::Paired) this->occ() = 2;
+    if (this->spin() == SPIN::Alpha) this->occ() = 1;
+    if (this->spin() == SPIN::Beta) this->occ() = 1;
+
+    this->particle_type() = particle_type;
+    this->particle_charge() = charge;
+    this->particle_mass() = mass;
+}
+
 /** @brief Constructor
  *
  * @param spin: electron spin (SPIN::Alpha/Beta/Paired)

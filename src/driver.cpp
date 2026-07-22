@@ -28,6 +28,8 @@
 #include <MRCPP/Timer>
 #include <mrdft/MRDFT.h> // libxc debug
 
+#include <MRCPP/functions/GaussFunc.h>
+
 #include "driver.h"
 #include <filesystem>
 
@@ -542,6 +544,19 @@ bool driver::scf::guess_orbitals(const json &json_guess, const json &json_occ, M
         MSG_ERROR("Invalid initial guess");
         success = false;
     }
+
+    {
+        mrcpp::GaussFunc<3> gaussian(1.0, 1.0, {0.0, 5.0, 0.0}, {0, 0, 0});
+
+        gaussian.normalize();
+
+        Orbital positron(SPIN::Beta, 2, 1.0, 1.0);
+
+        mrcpp::project(prec, positron.real(), gaussian);
+
+        Phi.push_back(positron);
+    }
+
     for (const auto &phi_i : Phi) {
         double err = (mrcpp::mpi::my_func(phi_i)) ? std::abs(phi_i.norm() - 1.0) : 0.0;
         if (err > 0.01) MSG_WARN("MO not normalized!");
