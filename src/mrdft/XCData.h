@@ -26,7 +26,8 @@
 #pragma once
 
 #include <MRCPP/Printer>
-#include <MRCPP/trees/MWNode.h>
+#include <MRCPP/MWOperators>
+#include <MRCPP/trees/FunctionNode.h>
 
 #include <Eigen/Core>
 #include <memory>
@@ -37,7 +38,7 @@ class XCData {
 public:
     XCData(const mrcpp::MWNode<3> &node, int nPts, bool spin)
             : nPts(nPts)
-            , ncoefs(node->getTDim() * node->getKp1_d())
+            , ncoefs(node.getTDim() * node.getKp1_d())
             , spin(spin)
             , hasDensity(false)
             , hasGradient(false)
@@ -45,6 +46,9 @@ public:
 
     void computeDensity(const mrcpp::MWNode<3> &rhoNode);
     void computeDensity(const mrcpp::MWNode<3> &alphaNode, const mrcpp::MWNode<3> &betaNode);
+
+    void computeGradient(mrcpp::DerivativeOperator<3> &derivOp, mrcpp::FunctionTree<3> &rho);
+    void computeGradient(mrcpp::DerivativeOperator<3> &derivOp, mrcpp::FunctionTree<3> &alpha, mrcpp::FunctionTree<3> &beta);
 
 private:
     int nPts, ncoefs;
@@ -58,6 +62,7 @@ private:
     Eigen::MatrixXd gradient;
 
     void computeDensityColumn(const mrcpp::MWNode<3> &rhoNode, int columnIndex);
+    void computeGradientColumn(mrcpp::DerivativeOperator<3> &derivOp, mrcpp::FunctionTree<3> &rho, int columnIndex);
 };
 
 } // namespace mrdft

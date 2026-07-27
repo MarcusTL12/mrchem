@@ -27,14 +27,12 @@
 
 namespace mrdft {
 
-
 void XCData::computeDensityColumn(const mrcpp::MWNode<3> &rhoNode, int columnIndex) {
     node.attachCoefs(density.col(columnIndex).data());
     for (int j = 0; j < ncoefs; j++) { density(j, columnIndex) = rhoNode.getCoefs()[j]; }
     node.mwTransform(mrcpp::Reconstruction);
     node.cvTransform(mrcpp::Forward);
 }
-
 
 void XCData::computeDensity(const mrcpp::MWNode<3> &rhoNode) {
     if (spin) MSG_ABORT("Trying to compute paired density in unrestricted calculation");
@@ -57,6 +55,38 @@ void XCData::computeDensity(const mrcpp::MWNode<3> &alphaNode, const mrcpp::MWNo
     computeDensityColumn(betaNode, 1);
 
     hasDensity = true;
+}
+
+void XCData::computeGradientColumn(mrcpp::DerivativeOperator<3> &derivOp, mrcpp::FunctionTree<3> &rho, int columnIndex) {
+    for (int d = 0; d < 3; d++) {
+        node.attachCoefs(gradient.col(3 * columnIndex).data());
+
+        mrcpp::DerivativeCalculator<3> derivcalc(d, derivOp, rho);
+        // derive rho and put result into xclib_inp aka node
+        derivcalc.calcNode(rho.getNode(node.getNodeIndex()), node);
+        // make cv representation of gradient of density
+        node.mwTransform(mrcpp::Reconstruction);
+        node.cvTransform(mrcpp::Forward);
+    }
+}
+
+void XCData::computeGradient(mrcpp::DerivativeOperator<3> &derivOp, mrcpp::FunctionTree<3> &rho) {
+    if (spin) MSG_ABORT("Trying to compute paired density gradient in unrestricted calculation");
+    if (hasGradient) return;
+
+    computeGradientColumn(derivOp, rho, 0);
+
+    hasGradient = true;
+}
+
+void XCData::computeGradient(mrcpp::DerivativeOperator<3> &derivOp, mrcpp::FunctionTree<3> &alpha, mrcpp::FunctionTree<3> &beta) {
+    if (not spin) MSG_ABORT("Trying to compute spin density gradient in restricted calculation");
+    if (hasGradient) return;
+
+    computeGradientColumn(derivOp, alpha, 0);
+    computeGradientColumn(derivOp, beta, 1);
+
+    hasGradient = true;
 }
 
 } // namespace mrdft

@@ -130,8 +130,19 @@ void Functional::makepot(mrcpp::FunctionTreeVector<3> &inp, std::vector<mrcpp::F
     Eigen::MatrixXd xclib_inp(ncoefs, xclib_inpsize); // input for xcfun
     double *coef = node.getCoefs();
 
-    if (not isSpin()) xc_data.computeDensity(std::get<1>(inp[0])->getNode(nodeIdx));
-    else xc_data.computeDensity(std::get<1>(inp[0])->getNode(nodeIdx), std::get<1>(inp[1])->getNode(nodeIdx));
+    if (not isSpin()) {
+        xc_data.computeDensity(std::get<1>(inp[0])->getNode(nodeIdx));
+    } else {
+        xc_data.computeDensity(std::get<1>(inp[0])->getNode(nodeIdx), std::get<1>(inp[1])->getNode(nodeIdx));
+    }
+
+    if (usesGradients()) {
+        if (not isSpin()) {
+            xc_data.computeGradient(*this->derivOp, *std::get<1>(inp[0]));
+        } else {
+            xc_data.computeGradient(*this->derivOp, *std::get<1>(inp[0]), *std::get<1>(inp[1]));
+        }
+    }
 
     for (int i = 0; i < spinsize; i++) {
         // make cv representation of density
