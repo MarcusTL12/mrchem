@@ -29,7 +29,7 @@
 #include <stdlib.h>
 
 #include "Factory.h"
-#include "XCInput.h"
+#include "XCData.h"
 #include "utils/print_utils.h"
 
 namespace mrdft {
@@ -125,10 +125,13 @@ void Functional::makepot(mrcpp::FunctionTreeVector<3> &inp, std::vector<mrcpp::F
     int spinsize = densityChannels();
     int xclib_inpsize = spinsize * (usesGradients() ? 4 : 1);
 
-    XCInput xc_inp(ncoefs, isSpin(), usesGradients());
+    XCData xc_data(std::get<1>(inp[0])->getNode(nodeIdx), ncoefs, isSpin());
 
     Eigen::MatrixXd xclib_inp(ncoefs, xclib_inpsize); // input for xcfun
     double *coef = node.getCoefs();
+
+    if (not isSpin()) xc_data.computeDensity(std::get<1>(inp[0])->getNode(nodeIdx));
+    else xc_data.computeDensity(std::get<1>(inp[0])->getNode(nodeIdx), std::get<1>(inp[1])->getNode(nodeIdx));
 
     for (int i = 0; i < spinsize; i++) {
         // make cv representation of density

@@ -23,22 +23,40 @@
  * <https://mrchem.readthedocs.io/>
  */
 
-#pragma once
-
-#include <Eigen/Core>
-#include <memory>
+#include "XCData.h"
 
 namespace mrdft {
 
-class XCInput {
-public:
-    XCInput(int nPts, bool spin, bool gradients)
-            : density(nPts, spin ? 2 : 1) {
-        if (gradients) { gradient = Eigen::MatrixXd(nPts, spin ? 6 : 3); }
-    }
 
-    Eigen::MatrixXd density;
-    Eigen::MatrixXd gradient;
-};
+void XCData::computeDensityColumn(const mrcpp::MWNode<3> &rhoNode, int columnIndex) {
+    node.attachCoefs(density.col(columnIndex).data());
+    for (int j = 0; j < ncoefs; j++) { density(j, columnIndex) = rhoNode.getCoefs()[j]; }
+    node.mwTransform(mrcpp::Reconstruction);
+    node.cvTransform(mrcpp::Forward);
+}
+
+
+void XCData::computeDensity(const mrcpp::MWNode<3> &rhoNode) {
+    if (spin) MSG_ABORT("Trying to compute paired density in unrestricted calculation");
+    if (hasDensity) return;
+
+    density = Eigen::MatrixXd(nPts, 1);
+
+    computeDensityColumn(rhoNode, 0);
+
+    hasDensity = true;
+}
+
+void XCData::computeDensity(const mrcpp::MWNode<3> &alphaNode, const mrcpp::MWNode<3> &betaNode) {
+    if (not spin) MSG_ABORT("Trying to compute spin density in restricted calculation");
+    if (hasDensity) return;
+
+    density = Eigen::MatrixXd(nPts, 2);
+
+    computeDensityColumn(alphaNode, 0);
+    computeDensityColumn(betaNode, 1);
+
+    hasDensity = true;
+}
 
 } // namespace mrdft
