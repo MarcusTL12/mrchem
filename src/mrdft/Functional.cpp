@@ -43,15 +43,8 @@ double Functional::amountEXX() const {
     return xclib->getAmountExx();
 }
 
-void Functional::evaluate_data(const Eigen::MatrixXd &inp, Eigen::MatrixXd &out) const {
-    int nInp = numIn();
+void Functional::evaluate_data(XCData &data, Eigen::MatrixXd &out) const {
     int nOut = numOut();
-    size_t nPts = inp.cols();
-    if (nInp != inp.rows()) {
-        std::ostringstream oss;
-        oss << "Invalid input: expected matrix with " << nInp << " rows, got " << inp.rows() << "!\n";
-        MSG_ABORT(oss.str());
-    }
     if (nOut != out.rows()) {
         std::ostringstream oss;
         oss << "Invalid output: expected matrix with " << nOut << " rows, got " << out.rows() << "!\n";
@@ -59,16 +52,15 @@ void Functional::evaluate_data(const Eigen::MatrixXd &inp, Eigen::MatrixXd &out)
     }
     out.setZero();
 
-    xclib->callLibEval(inp, out, nPts);
+    xclib->callLibEval(data, out, data.nPts);
 }
 
-Eigen::MatrixXd Functional::evaluate(Eigen::MatrixXd &inp) const {
+Eigen::MatrixXd Functional::evaluate(XCData &data) const {
     // For efficiency: transpose inp and out matrices
     // NB: the data is stored colomn major, i.e. two consecutive points of for example energy density, are not consecutive in memory
     // That means that we cannot extract the energy density data with out.row(0).data() for example.
-    Eigen::MatrixXd inp_trans(inp.transpose());
-    Eigen::MatrixXd out_trans(numOut(), inp.rows());
-    evaluate_data(inp_trans, out_trans);
+    Eigen::MatrixXd out_trans(numOut(), data.nPts);
+    evaluate_data(data, out_trans);
     return out_trans.transpose();
 }
 

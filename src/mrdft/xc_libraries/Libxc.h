@@ -53,7 +53,7 @@ public:
 
     void setFunctional(const std::string &name, double c) override;
     void initFunctionalLibrary(bool &lda, bool &gga, bool &mgga, int order, bool gamma) override;
-    void callLibEval(const Eigen::MatrixXd &inp, Eigen::MatrixXd &out, int nPts) const override;
+    void callLibEval(XCData &data, Eigen::MatrixXd &out, int nPts) const override;
     void printFunctionalReference(int out_txt_width) const override;
 
     void setCutoff(double cutoff) override;

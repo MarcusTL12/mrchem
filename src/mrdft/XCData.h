@@ -39,10 +39,13 @@ public:
     XCData(const mrcpp::MWNode<3> &node, int nPts, bool spin)
             : nPts(nPts)
             , ncoefs(node.getTDim() * node.getKp1_d())
-            , spin(spin)
+            , isSpin(spin)
             , hasDensity(false)
             , hasGradient(false)
             , node(node, true, false) {}
+
+    const Eigen::MatrixXd &getDensity() const { return density; }
+    const Eigen::MatrixXd &getGradient() const { return gradient; }
 
     void computeDensity(const mrcpp::MWNode<3> &rhoNode);
     void computeDensity(const mrcpp::MWNode<3> &alphaNode, const mrcpp::MWNode<3> &betaNode);
@@ -50,12 +53,12 @@ public:
     void computeGradient(mrcpp::DerivativeOperator<3> &derivOp, mrcpp::FunctionTree<3> &rho);
     void computeGradient(mrcpp::DerivativeOperator<3> &derivOp, mrcpp::FunctionTree<3> &alpha, mrcpp::FunctionTree<3> &beta);
 
-private:
     int nPts, ncoefs;
-    bool spin;
+    bool isSpin;
 
     bool hasDensity, hasGradient;
 
+private:
     mrcpp::MWNode<3> node;
 
     Eigen::MatrixXd density;

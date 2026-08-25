@@ -134,7 +134,7 @@ public:
      * @param[out] out_trans Matrix of output values (energy, potential, ...)
      * @details Each row corresponds to one grid point. Previously called evaluate_transposed()
      */
-    Eigen::MatrixXd evaluate(Eigen::MatrixXd &inp) const;
+    Eigen::MatrixXd evaluate(XCData &data) const;
 
     /**
      * @brief Prints the splash screens, version info, and references for the
@@ -163,7 +163,7 @@ protected:
      * @param[in] inp  Matrix of input values, where each row is one grid point
      * @param[out] out Matrix of output values
      */
-    void evaluate_data(const Eigen::MatrixXd &inp, Eigen::MatrixXd &out) const;
+    void evaluate_data(XCData &data, Eigen::MatrixXd &out) const;
 
     /**
      * @brief Contracts a collection of grid points

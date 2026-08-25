@@ -35,7 +35,7 @@ void XCData::computeDensityColumn(const mrcpp::MWNode<3> &rhoNode, int columnInd
 }
 
 void XCData::computeDensity(const mrcpp::MWNode<3> &rhoNode) {
-    if (spin) MSG_ABORT("Trying to compute paired density in unrestricted calculation");
+    if (isSpin) MSG_ABORT("Trying to compute paired density in unrestricted calculation");
     if (hasDensity) return;
 
     density = Eigen::MatrixXd(nPts, 1);
@@ -46,7 +46,7 @@ void XCData::computeDensity(const mrcpp::MWNode<3> &rhoNode) {
 }
 
 void XCData::computeDensity(const mrcpp::MWNode<3> &alphaNode, const mrcpp::MWNode<3> &betaNode) {
-    if (not spin) MSG_ABORT("Trying to compute spin density in restricted calculation");
+    if (not isSpin) MSG_ABORT("Trying to compute spin density in restricted calculation");
     if (hasDensity) return;
 
     density = Eigen::MatrixXd(nPts, 2);
@@ -71,7 +71,7 @@ void XCData::computeGradientColumn(mrcpp::DerivativeOperator<3> &derivOp, mrcpp:
 }
 
 void XCData::computeGradient(mrcpp::DerivativeOperator<3> &derivOp, mrcpp::FunctionTree<3> &rho) {
-    if (spin) MSG_ABORT("Trying to compute paired density gradient in unrestricted calculation");
+    if (isSpin) MSG_ABORT("Trying to compute paired density gradient in unrestricted calculation");
     if (hasGradient) return;
 
     computeGradientColumn(derivOp, rho, 0);
@@ -80,7 +80,7 @@ void XCData::computeGradient(mrcpp::DerivativeOperator<3> &derivOp, mrcpp::Funct
 }
 
 void XCData::computeGradient(mrcpp::DerivativeOperator<3> &derivOp, mrcpp::FunctionTree<3> &alpha, mrcpp::FunctionTree<3> &beta) {
-    if (not spin) MSG_ABORT("Trying to compute spin density gradient in restricted calculation");
+    if (not isSpin) MSG_ABORT("Trying to compute spin density gradient in restricted calculation");
     if (hasGradient) return;
 
     computeGradientColumn(derivOp, alpha, 0);
