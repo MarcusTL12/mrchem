@@ -43,13 +43,11 @@ QMHeatLaplacian::QMHeatLaplacian(double t, int order, double prec)
     : prec(prec) {
     mrcpp::GaussExp<1> kernel;
 
-    constant_coeff = constant_coeffs[order - 1];
+    constant_coeff = constant_coeffs[order - 1] / t;
 
     for (int i = 0; i < order; i++) {
-        double t_local = t * (i + 1);
-
-        double exponent = 0.25 / t_local;
-        double coeff = heat_kernel_coeffs[order - 1][i] * std::sqrt(exponent / mrcpp::pi) / t_local;
+        double exponent = 0.25 / (t * (i + 1));
+        double coeff = heat_kernel_coeffs[order - 1][i] * std::sqrt(exponent / mrcpp::pi) / t;
 
         mrcpp::GaussFunc<1> g(exponent, coeff);
 
