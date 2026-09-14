@@ -48,7 +48,7 @@ protected:
         return 0.0;
     }
 
-    Orbital apply(Orbital inp) override { return inp; }
+    Orbital apply(Orbital inp) override;
     Orbital dagger(Orbital inp) override {
         (void)inp;
         NOT_IMPLEMENTED_ABORT;
@@ -63,6 +63,7 @@ protected:
 
 private:
     std::shared_ptr<mrcpp::ConvolutionOperator<3>> conv;
+    double prec;
     double constant_coeff;
 };
 

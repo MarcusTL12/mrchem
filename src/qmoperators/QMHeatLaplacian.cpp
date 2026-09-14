@@ -26,6 +26,8 @@
 #include "QMHeatLaplacian.h"
 
 #include "MRCPP/Gaussians"
+#include "MRCPP/MWFunctions"
+#include "MRCPP/MWOperators"
 
 extern mrcpp::MultiResolutionAnalysis<3> *mrchem::MRA;
 
@@ -37,7 +39,8 @@ static double heat_kernel_coeffs_2[2] = {2.0, 0.5};
 static double *heat_kernel_coeffs[2] = {heat_kernel_coeffs_1, heat_kernel_coeffs_2};
 static double constant_coeffs[2] = {-1.0, -1.5};
 
-QMHeatLaplacian::QMHeatLaplacian(double t, int order, double prec) {
+QMHeatLaplacian::QMHeatLaplacian(double t, int order, double prec)
+    : prec(prec) {
     mrcpp::GaussExp<1> kernel;
 
     constant_coeff = constant_coeffs[order - 1];
@@ -54,6 +57,16 @@ QMHeatLaplacian::QMHeatLaplacian(double t, int order, double prec) {
     }
 
     conv = std::make_shared<mrcpp::ConvolutionOperator<3>>(*MRA, kernel, prec);
+}
+
+Orbital QMHeatLaplacian::apply(Orbital inp) {
+    Orbital out_conv, out;
+
+    mrcpp::apply(prec, out_conv.real(), *conv.get(), inp.real());
+
+    mrcpp::add(prec, out.real(), 1.0, out_conv.real(), constant_coeff, inp.real());
+
+    return out;
 }
 
 } // namespace mrchem
