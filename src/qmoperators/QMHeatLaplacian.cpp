@@ -23,7 +23,7 @@
  * <https://mrchem.readthedocs.io/>
  */
 
-#include "HeatKineticOperator.h"
+#include "QMHeatLaplacian.h"
 
 #include "MRCPP/Gaussians"
 
@@ -37,7 +37,7 @@ static double heat_kernel_coeffs_2[2] = {2.0, 0.5};
 static double *heat_kernel_coeffs[2] = {heat_kernel_coeffs_1, heat_kernel_coeffs_2};
 static double constant_coeffs[2] = {-1.0, -1.5};
 
-HeatKineticOperator::HeatKineticOperator(double t, int order, double prec) {
+QMHeatLaplacian::QMHeatLaplacian(double t, int order, double prec) {
     mrcpp::GaussExp<1> kernel;
 
     constant_coeff = constant_coeffs[order - 1];
@@ -53,11 +53,7 @@ HeatKineticOperator::HeatKineticOperator(double t, int order, double prec) {
         kernel.append(g);
     }
 
-    conv = std::make_unique<mrcpp::ConvolutionOperator<3>>(*MRA, kernel, prec);
-
-    RankZeroOperator &this_op = (*this);
-    this_op = -0.5 * this_op;
-    this_op.name() = "T";
+    conv = std::make_shared<mrcpp::ConvolutionOperator<3>>(*MRA, kernel, prec);
 }
 
 } // namespace mrchem

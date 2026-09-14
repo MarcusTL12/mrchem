@@ -25,8 +25,10 @@
 
 #pragma once
 
-#include "tensor/RankZeroOperator.h"
-#include "qmoperators/QMHeatLaplacian.h"
+#include <MRCPP/MWOperators>
+#include <MRCPP/Printer>
+
+#include "QMOperator.h"
 
 /** @class HeatKineticOperator
  *
@@ -36,19 +38,32 @@
 
 namespace mrchem {
 
-class HeatKineticOperator final : public RankZeroOperator {
+class QMHeatLaplacian final : public QMOperator {
 public:
-    explicit HeatKineticOperator(double t, int order, double prec) {
-        O = std::make_shared<QMHeatLaplacian>(t, order, prec);
+    explicit QMHeatLaplacian(double t, int order, double prec);
 
-        RankZeroOperator &T = (*this);
-        T = O;
-        T = -0.5 * T;
-        T.name() = "T";
+protected:
+    ComplexDouble evalf(const mrcpp::Coord<3> &r) const override {
+        (void)r;
+        return 0.0;
+    }
+
+    Orbital apply(Orbital inp) override { return inp; }
+    Orbital dagger(Orbital inp) override {
+        (void)inp;
+        NOT_IMPLEMENTED_ABORT;
+    }
+
+    QMOperatorVector apply(std::shared_ptr<QMOperator> &O) override {
+        QMOperatorVector out;
+        out.push_back(O);
+        out.push_back(std::make_shared<QMHeatLaplacian>(*this));
+        return out;
     }
 
 private:
-    std::shared_ptr<QMHeatLaplacian> O{nullptr};
+    std::shared_ptr<mrcpp::ConvolutionOperator<3>> conv;
+    double constant_coeff;
 };
 
 } // namespace mrchem
