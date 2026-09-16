@@ -60,11 +60,14 @@ QMHeatLaplacian::QMHeatLaplacian(double t, int order, double prec)
 Orbital QMHeatLaplacian::apply(Orbital inp) {
     Orbital out_conv, out;
 
-    mrcpp::apply(prec, out_conv.real(), *conv.get(), inp.real());
+    out_conv.defreal();
+    out.defreal();
+
+    mrcpp::apply(prec, out.real(), *conv.get(), inp.real());
 
     mrcpp::add(prec, out.real(), 1.0, out_conv.real(), constant_coeff, inp.real());
 
-    return out;
+    return inp;
 }
 
 } // namespace mrchem

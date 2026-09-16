@@ -72,6 +72,12 @@ void FockBuilder::build(double exx) {
     if (this->ext != nullptr) this->V += (*this->ext);
     if (this->Ro != nullptr) this->V -= (*this->Ro);
     if (this->pp_projector != nullptr) this->V += (*this->pp_projector);
+
+    if (this->kin != nullptr) {
+        this->total_fock_operator = RankZeroOperator();
+        this->total_fock_operator += (*this->kin);
+        this->total_fock_operator += this->V;
+    }
 }
 
 /** @brief prepare operator for application
@@ -258,6 +264,11 @@ ComplexMatrix FockBuilder::operator()(OrbitalVector &bra, OrbitalVector &ket) {
     mrcpp::print::footer(2, t_tot, 2);
     if (plevel == 1) mrcpp::print::time(1, "Computing Fock matrix", t_tot);
     return T_mat + V_mat;
+}
+
+OrbitalVector FockBuilder::operator()(OrbitalVector &ket) {
+    // return ket;
+    return this->total_fock_operator(ket);
 }
 
 ComplexMatrix FockBuilder::kineticMatrix(OrbitalVector &bra, OrbitalVector &ket) {

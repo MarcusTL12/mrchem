@@ -261,6 +261,20 @@ def stencil() -> JSONDict:
                                         {   'default': 'abgv_00',
                                             'name': 'zora',
                                             'type': 'str'}],
+                        'sections': [
+                                        {   'keywords' : [
+                                            {   'default': 1,
+                                                'name': 'order',
+                                                'type': 'int'},
+                                            {   'default': 1.0e-5,
+                                                'name': 'step',
+                                                'type': 'float'},
+                                            {   'default': "user['world_prec']",
+                                                'name': 'prec',
+                                                'type': 'float'}
+                                        ],
+                                            'name': 'heat_kinetic'},
+                        ],
                         'name': 'Derivatives'},
                     {   'keywords': [   {   'default': 0,
                                             'name': 'charge',

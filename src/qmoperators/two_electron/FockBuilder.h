@@ -94,6 +94,7 @@ public:
 
     SCFEnergy trace(OrbitalVector &Phi, const Nuclei &nucs);
     ComplexMatrix operator()(OrbitalVector &bra, OrbitalVector &ket);
+    OrbitalVector operator()(OrbitalVector &ket);
     ComplexMatrix kineticMatrix(OrbitalVector &bra, OrbitalVector &ket);
     ComplexMatrix potentialMatrix(OrbitalVector &bra, OrbitalVector &ket);
 
@@ -117,6 +118,7 @@ private:
 
     RankZeroOperator V;   ///< Total potential energy operator
     RankZeroOperator H_1; ///< Perturbation operators
+    RankZeroOperator total_fock_operator;
 
     std::shared_ptr<MomentumOperator> mom{nullptr};
     std::shared_ptr<HeatKineticOperator> kin{nullptr};

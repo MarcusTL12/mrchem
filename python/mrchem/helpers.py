@@ -76,6 +76,8 @@ def write_scf_fock(user_dict, wf_dict, origin):
     # Kinetic
     fock_dict["kinetic_operator"] = {"derivative": user_dict["Derivatives"]["kinetic"]}
 
+    fock_dict["heat_kinetic_operator"] = user_dict["Derivatives"]["heat_kinetic"]
+
     # Nuclear
     fock_dict["nuclear_operator"] = {
         "proj_prec": user_dict["Precisions"]["nuclear_prec"],

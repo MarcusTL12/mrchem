@@ -252,6 +252,7 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
     const Nuclei &nucs = mol.getNuclei();
     OrbitalVector &Phi_n = mol.getOrbitals();
     ComplexMatrix &F_mat = mol.getFockMatrix();
+    ComplexMatrix F_mat_heat = F_mat;
 
     auto scaling = std::vector<double>(Phi_n.size(), 1.0);
     KAIN kain(this->history, 0, false, scaling);
@@ -355,7 +356,12 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         if (F.getReactionOperator() != nullptr) F.getReactionOperator()->updateMOResidual(err_t);
         F.setup(orb_prec);
         F_mat = F(Phi_n, Phi_n);
+        OrbitalVector F_Phi_n = F(Phi_n);
+        F_mat_heat = orbital::calc_overlap_matrix(Phi_n, F_Phi_n);
         E_n = F.trace(Phi_n, nucs);
+
+        MSG_INFO("F_mat: \n" << F_mat);
+        MSG_INFO("F_mat_heat: \n" << F_mat_heat);
 
         // Collect convergence data
         this->error.push_back(err_t);
