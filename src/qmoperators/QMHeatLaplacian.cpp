@@ -35,19 +35,20 @@ namespace mrchem {
 
 static double heat_kernel_coeffs_1[1] = {1.0};
 static double heat_kernel_coeffs_2[2] = {2.0, -0.5};
+static double heat_kernel_coeffs_3[3] = {3.0, -1.5, 1.0 / 3.0};
 
-static double *heat_kernel_coeffs[2] = {heat_kernel_coeffs_1, heat_kernel_coeffs_2};
-static double constant_coeffs[2] = {-1.0, -1.5};
+static double *heat_kernel_coeffs[3] = {heat_kernel_coeffs_1, heat_kernel_coeffs_2, heat_kernel_coeffs_3};
+static double constant_coeffs[3] = {-1.0, -1.5, -11.0 / 6.0};
 
 QMHeatLaplacian::QMHeatLaplacian(double t, int order, double prec)
-    : prec(prec) {
+        : prec(prec) {
     mrcpp::GaussExp<1> kernel;
 
     constant_coeff = constant_coeffs[order - 1] / t;
 
     for (int i = 0; i < order; i++) {
         double exponent = 0.25 / (t * (i + 1));
-        double coeff = heat_kernel_coeffs[order - 1][i] * std::sqrt(exponent / mrcpp::pi) / t;
+        double coeff = heat_kernel_coeffs[order - 1][i] * std::pow(exponent / mrcpp::pi, 1.5) / t;
 
         mrcpp::GaussFunc<1> g(exponent, coeff);
 
