@@ -267,7 +267,6 @@ ComplexMatrix FockBuilder::operator()(OrbitalVector &bra, OrbitalVector &ket) {
 }
 
 OrbitalVector FockBuilder::operator()(OrbitalVector &ket) {
-    // return ket;
     return this->total_fock_operator(ket);
 }
 

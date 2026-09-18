@@ -65,9 +65,10 @@ public:
     MomentumOperator &momentum() { return *this->mom; }
     RankZeroOperator &potential() { return this->V; }
     RankZeroOperator &perturbation() { return this->H_1; }
-
+    
+    RankZeroOperator& getTotalFockOperator() { return this->total_fock_operator; }
     std::shared_ptr<MomentumOperator> &getMomentumOperator() { return this->mom; }
-    std::shared_ptr<HeatKineticOperator> &getHeatKineticOperator() { return this->kin; }
+    std::shared_ptr<RankZeroOperator> &getHeatKineticOperator() { return this->kin; }
     std::shared_ptr<NuclearOperator> &getNuclearOperator() { return this->nuc; }
     std::shared_ptr<CoulombOperator> &getCoulombOperator() { return this->coul; }
     std::shared_ptr<ExchangeOperator> &getExchangeOperator() { return this->ex; }
@@ -121,7 +122,7 @@ private:
     RankZeroOperator total_fock_operator;
 
     std::shared_ptr<MomentumOperator> mom{nullptr};
-    std::shared_ptr<HeatKineticOperator> kin{nullptr};
+    std::shared_ptr<RankZeroOperator> kin{nullptr};
     std::shared_ptr<NuclearOperator> nuc{nullptr};
     std::shared_ptr<CoulombOperator> coul{nullptr};
     std::shared_ptr<ExchangeOperator> ex{nullptr};

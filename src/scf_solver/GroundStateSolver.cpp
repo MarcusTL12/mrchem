@@ -252,7 +252,6 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
     const Nuclei &nucs = mol.getNuclei();
     OrbitalVector &Phi_n = mol.getOrbitals();
     ComplexMatrix &F_mat = mol.getFockMatrix();
-    ComplexMatrix F_mat_heat = F_mat;
 
     auto scaling = std::vector<double>(Phi_n.size(), 1.0);
     KAIN kain(this->history, 0, false, scaling);
@@ -356,12 +355,22 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         if (F.getReactionOperator() != nullptr) F.getReactionOperator()->updateMOResidual(err_t);
         F.setup(orb_prec);
         F_mat = F(Phi_n, Phi_n);
-        OrbitalVector F_Phi_n = F(Phi_n);
-        F_mat_heat = orbital::calc_overlap_matrix(Phi_n, F_Phi_n);
+        // OrbitalVector F_Phi_n = F(Phi_n);
+        ComplexMatrix F_heat = F.getTotalFockOperator()(Phi_n, Phi_n);
         E_n = F.trace(Phi_n, nucs);
 
         MSG_INFO("F_mat: \n" << F_mat);
-        MSG_INFO("F_mat_heat: \n" << F_mat_heat);
+        MSG_INFO("F_heat: \n" << F_heat);
+        ComplexMatrix F_diff = F_heat - F_mat;
+        MSG_INFO("F_diff: \n" << F_diff);
+
+        ComplexMatrix T_mom = F.kineticMatrix(Phi_n, Phi_n);
+        ComplexMatrix T_heat = (*F.getHeatKineticOperator())(Phi_n, Phi_n);
+        MSG_INFO("T_mat: \n" << T_mom);
+        MSG_INFO("T_mat_heat: \n" << T_heat);
+
+        ComplexMatrix T_diff = T_heat - T_mom;
+        MSG_INFO("T_diff: \n" << T_diff);
 
         // Collect convergence data
         this->error.push_back(err_t);
