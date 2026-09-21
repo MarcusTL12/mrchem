@@ -1288,7 +1288,8 @@ void driver::build_fock_operator(const json &json_fock, Molecule &mol, FockBuild
         auto step = json_fock["heat_kinetic_operator"]["step"];
         auto order = json_fock["heat_kinetic_operator"]["order"];
         auto prec = json_fock["heat_kinetic_operator"]["prec"];
-        auto T_p = std::make_shared<HeatKineticOperator>(step, order, prec);
+        std::string heat_type = json_fock["heat_kinetic_operator"]["type"];
+        auto T_p = std::make_shared<HeatKineticOperator>(step, order, prec, heat_type);
         F.getHeatKineticOperator() = T_p;
     }
 

@@ -40,7 +40,7 @@ namespace mrchem {
 
 class QMHeatLaplacian final : public QMOperator {
 public:
-    explicit QMHeatLaplacian(double t, int order, double prec);
+    explicit QMHeatLaplacian(double t, int order, double prec, std::string &type);
 
 protected:
     ComplexDouble evalf(const mrcpp::Coord<3> &r) const override {

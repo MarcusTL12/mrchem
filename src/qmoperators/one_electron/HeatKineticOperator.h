@@ -38,8 +38,8 @@ namespace mrchem {
 
 class HeatKineticOperator final : public RankZeroOperator {
 public:
-    explicit HeatKineticOperator(double t, int order, double prec) {
-        O = std::make_shared<QMHeatLaplacian>(t, order, prec);
+    explicit HeatKineticOperator(double t, int order, double prec, std::string &type) {
+        O = std::make_shared<QMHeatLaplacian>(t, order, prec, type);
 
         RankZeroOperator &T = (*this);
         T = O;

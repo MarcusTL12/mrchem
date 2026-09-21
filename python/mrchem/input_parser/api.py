@@ -271,7 +271,10 @@ def stencil() -> JSONDict:
                                                 'type': 'float'},
                                             {   'default': "user['world_prec']",
                                                 'name': 'prec',
-                                                'type': 'float'}
+                                                'type': 'float'},
+                                            {   'default': "log",
+                                                'name': 'type',
+                                                'type': 'str'}
                                         ],
                                             'name': 'heat_kinetic'},
                         ],
