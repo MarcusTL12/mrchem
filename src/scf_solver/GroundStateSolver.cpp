@@ -372,6 +372,12 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         ComplexMatrix T_diff = T_heat - T_mom;
         MSG_INFO("T_diff: \n" << T_diff);
 
+        OrbitalVector F_phi = F(Phi_n);
+        ComplexMatrix F_mat_ovlp = orbital::calc_overlap_matrix(Phi_n, F_phi);
+        MSG_INFO("T_mat_ovlp: \n" << T_heat);
+        ComplexMatrix F_diff_ovlp = F_mat_ovlp - F_mat;
+        MSG_INFO("F_diff: \n" << F_diff_ovlp);
+
         // Collect convergence data
         this->error.push_back(err_t);
         this->energy.push_back(E_n);
