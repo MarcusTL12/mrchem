@@ -64,6 +64,10 @@ ComplexMatrix localize(double prec, OrbitalVector &Phi, ComplexMatrix &F);
 ComplexMatrix diagonalize(double prec, OrbitalVector &Phi, ComplexMatrix &F);
 ComplexMatrix orthonormalize(double prec, OrbitalVector &Phi, ComplexMatrix &F);
 
+OrbitalVector project_on(double prec, OrbitalVector &Projector, OrbitalVector &Phi);
+OrbitalVector project_out(double prec, OrbitalVector &Projector, OrbitalVector &Phi);
+OrbitalVector project_out_symmetric(double prec, OrbitalVector &Projector, OrbitalVector &Phi);
+
 int size_empty(const OrbitalVector &Phi);
 int size_occupied(const OrbitalVector &Phi);
 int size_singly(const OrbitalVector &Phi);

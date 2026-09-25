@@ -356,27 +356,41 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         F.setup(orb_prec);
         F_mat = F(Phi_n, Phi_n);
         // OrbitalVector F_Phi_n = F(Phi_n);
-        ComplexMatrix F_heat = F.getTotalFockOperator()(Phi_n, Phi_n);
+        // ComplexMatrix F_heat = F.getTotalFockOperator()(Phi_n, Phi_n);
         E_n = F.trace(Phi_n, nucs);
 
-        MSG_INFO("F_mat: \n" << F_mat);
-        MSG_INFO("F_heat: \n" << F_heat);
-        ComplexMatrix F_diff = F_heat - F_mat;
-        MSG_INFO("F_diff: \n" << F_diff);
-
-        ComplexMatrix T_mom = F.kineticMatrix(Phi_n, Phi_n);
-        ComplexMatrix T_heat = (*F.getHeatKineticOperator())(Phi_n, Phi_n);
-        MSG_INFO("T_mat: \n" << T_mom);
-        MSG_INFO("T_mat_heat: \n" << T_heat);
-
-        ComplexMatrix T_diff = T_heat - T_mom;
-        MSG_INFO("T_diff: \n" << T_diff);
-
         OrbitalVector F_phi = F(Phi_n);
-        ComplexMatrix F_mat_ovlp = orbital::calc_overlap_matrix(Phi_n, F_phi);
-        MSG_INFO("T_mat_ovlp: \n" << T_heat);
-        ComplexMatrix F_diff_ovlp = F_mat_ovlp - F_mat;
-        MSG_INFO("F_diff: \n" << F_diff_ovlp);
+        OrbitalVector grad = orbital::project_out(1.0e-8, Phi_n, F_phi);
+        DoubleVector grad_norms = orbital::get_norms(grad);
+        MSG_INFO("Gradient norms:\n" << grad_norms);
+
+        OrbitalVector grad_sym = orbital::project_out_symmetric(1.0e-8, Phi_n, F_phi);
+        DoubleVector grad_sym_norms = orbital::get_norms(grad_sym);
+        MSG_INFO("Symmetric gradient norms:\n" << grad_sym_norms);
+
+        orbital::normalize(grad);
+        orbital::normalize(grad_sym);
+
+        MSG_INFO("Sym/Non-sym grad ovlp:\n" << orbital::calc_overlap_matrix(grad, grad_sym));
+
+        // MSG_INFO("F_mat: \n" << F_mat);
+        // MSG_INFO("F_heat: \n" << F_heat);
+        // ComplexMatrix F_diff = F_heat - F_mat;
+        // MSG_INFO("F_diff: \n" << F_diff);
+
+        // ComplexMatrix T_mom = F.kineticMatrix(Phi_n, Phi_n);
+        // ComplexMatrix T_heat = (*F.getHeatKineticOperator())(Phi_n, Phi_n);
+        // MSG_INFO("T_mat: \n" << T_mom);
+        // MSG_INFO("T_mat_heat: \n" << T_heat);
+
+        // ComplexMatrix T_diff = T_heat - T_mom;
+        // MSG_INFO("T_diff: \n" << T_diff);
+
+        // OrbitalVector F_phi = F(Phi_n);
+        // ComplexMatrix F_mat_ovlp = orbital::calc_overlap_matrix(Phi_n, F_phi);
+        // MSG_INFO("T_mat_ovlp: \n" << T_heat);
+        // ComplexMatrix F_diff_ovlp = F_mat_ovlp - F_mat;
+        // MSG_INFO("F_diff: \n" << F_diff_ovlp);
 
         // Collect convergence data
         this->error.push_back(err_t);

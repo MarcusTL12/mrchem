@@ -620,6 +620,47 @@ ComplexMatrix orbital::orthonormalize(double prec, OrbitalVector &Phi, ComplexMa
     return U;
 }
 
+/** @brief Project orbitals Phi onto orbitals Projector
+ * P = sum_p(|P_p><P_p|)
+ * 
+ * |new_phi_i> = sum_p(|P_p><P_p|phi_i>)
+ */
+OrbitalVector orbital::project_on(double prec, OrbitalVector &Projector, OrbitalVector &Phi) {
+    MSG_INFO("P ovlp:\n" << orbital::calc_overlap_matrix(Projector));
+    MSG_INFO("Phi ovlp:\n" << orbital::calc_overlap_matrix(Phi));
+
+    // S_pi = <P_p|Phi_i>
+    ComplexMatrix cross_ovlp = orbital::calc_overlap_matrix(Projector, Phi);
+
+    MSG_INFO("cross ovlp:\n" << cross_ovlp);
+
+    return orbital::rotate(Projector, cross_ovlp);
+}
+
+/** @brief Project away components of Phi in Projector
+ * P = I - sum_p(|P_p><P_p|)
+ */
+OrbitalVector orbital::project_out(double prec, OrbitalVector &Projector, OrbitalVector &Phi) {
+    OrbitalVector projected = orbital::project_on(prec, Projector, Phi);
+
+    MSG_INFO("proj_nrm:\n" << orbital::get_norms(projected));
+
+    return orbital::add(1.0, Phi, -1.0, projected, prec);
+}
+
+/** @brief Project away components of Phi in Projector in a symmetric way
+ * 
+ */
+OrbitalVector orbital::project_out_symmetric(double prec, OrbitalVector &Projector, OrbitalVector &Phi) {
+    ComplexMatrix cross_ovlp = orbital::calc_overlap_matrix(Projector, Phi);
+
+    ComplexMatrix sym_ovlp = cross_ovlp + cross_ovlp.transpose();
+
+    OrbitalVector perpendicular = orbital::rotate(Projector, sym_ovlp);
+
+    return orbital::add(1.0, Phi, -0.5, perpendicular, prec);
+}
+
 /** @brief Returns the number of occupied orbitals */
 int orbital::size_occupied(const OrbitalVector &Phi) {
     int nOcc = 0;
