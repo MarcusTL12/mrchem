@@ -270,6 +270,10 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         printConvergenceRow(0);
     }
 
+    bool do_grad_desc = true;
+    double grad_step = -2e-3;
+    double prev_grad_norm = 1.0e10;
+
     int nIter = 0;
     bool converged = false;
     json_out["cycles"] = {};
@@ -289,24 +293,53 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
             F.setup(orb_prec);
         }
 
-        // Init Helmholtz operator
-        HelmholtzVector H(helm_prec, F_mat.real().diagonal());
-        ComplexMatrix L_mat = H.getLambdaMatrix();
+        OrbitalVector dPhi_n;
 
-        // Apply Helmholtz operator
-        OrbitalVector Psi = F.buildHelmholtzArgument(orb_prec, Phi_n, F_mat, L_mat);
-        OrbitalVector Phi_np1 = H(Psi);
-        Psi.clear();
-        F.clear();
+        if (do_grad_desc) {
+            OrbitalVector F_phi = F(Phi_n);
+            // OrbitalVector grad = orbital::project_out(1.0e-8, Phi_n, F_phi);
+            // DoubleVector grad_norms = orbital::get_norms(grad);
+            // MSG_INFO("Gradient norms:\n" << grad_norms);
 
-        // Orthonormalize
-        orbital::orthonormalize(orb_prec, Phi_np1, F_mat);
+            OrbitalVector grad_sym = orbital::project_out_symmetric(1.0e-8, Phi_n, F_phi);
+            DoubleVector grad_sym_norms = orbital::get_norms(grad_sym);
+            MSG_INFO("Symmetric gradient norms:\n" << grad_sym_norms);
 
-        // Compute orbital updates
-        OrbitalVector dPhi_n = orbital::add(1.0, Phi_np1, -1.0, Phi_n);
-        Phi_np1.clear();
+            double new_grad_norm = grad_sym_norms.norm();
 
-        kain.accelerate(orb_prec, Phi_n, dPhi_n);
+            if (new_grad_norm > prev_grad_norm) {
+                grad_step *= 0.5;
+            }
+
+            prev_grad_norm = new_grad_norm;
+
+            MSG_INFO("Grad step: " << grad_step);
+
+            dPhi_n = grad_sym;
+
+            F_phi.clear();
+            // grad.clear();
+            grad_sym.clear();
+        } else {
+            // Init Helmholtz operator
+            HelmholtzVector H(helm_prec, F_mat.real().diagonal());
+            ComplexMatrix L_mat = H.getLambdaMatrix();
+
+            // Apply Helmholtz operator
+            OrbitalVector Psi = F.buildHelmholtzArgument(orb_prec, Phi_n, F_mat, L_mat);
+            OrbitalVector Phi_np1 = H(Psi);
+            Psi.clear();
+            F.clear();
+
+            // Orthonormalize
+            orbital::orthonormalize(orb_prec, Phi_np1, F_mat);
+
+            // Compute orbital updates
+            dPhi_n = orbital::add(1.0, Phi_np1, -1.0, Phi_n);
+            Phi_np1.clear();
+
+            kain.accelerate(orb_prec, Phi_n, dPhi_n);
+        }
 
         // Compute errors
         errors = orbital::get_norms(dPhi_n);
@@ -315,7 +348,7 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         json_cycle["mo_residual"] = err_t;
 
         // Update orbitals
-        Phi_n = orbital::add(1.0, Phi_n, 1.0, dPhi_n);
+        Phi_n = orbital::add(1.0, Phi_n, do_grad_desc ? grad_step : 1.0, dPhi_n);
         dPhi_n.clear();
 
         // MOM / IMOM: get the new occupation vector for the current scf iteration
@@ -326,10 +359,8 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
                 DoubleVector occNew = getNewOccupations(Phi_n, Phi_mom);
                 orbital::set_occupations(Phi_n, occNew);
                 mol.calculateOrbitalPositions();
-                if (plevel >= 2)
-                    mol.printOrbitalPositions();
-            }
-            else {
+                if (plevel >= 2) mol.printOrbitalPositions();
+            } else {
                 // in case of unrestricted calculation, get the new occupation for alpha and beta spins independently
                 OrbitalVector Phi_n_beta = orbital::deep_copy(Phi_n);
                 OrbitalVector Phi_mom_beta = orbital::deep_copy(Phi_mom);
@@ -341,13 +372,11 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
                 occNew << occAlpha, occBeta;
                 orbital::set_occupations(Phi_n, occNew);
                 mol.calculateOrbitalPositions();
-                if (plevel >= 2)
-                    mol.printOrbitalPositions();
+                if (plevel >= 2) mol.printOrbitalPositions();
             }
         }
         // MOM: save orbitals of current iteration for next iteration of the SCF procedure
-        if (deltaSCFMethod == "MOM")
-            Phi_mom = orbital::deep_copy(Phi_n);
+        if (deltaSCFMethod == "MOM") Phi_mom = orbital::deep_copy(Phi_n);
 
         orbital::orthonormalize(orb_prec, Phi_n, F_mat);
 
@@ -358,20 +387,6 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         // OrbitalVector F_Phi_n = F(Phi_n);
         // ComplexMatrix F_heat = F.getTotalFockOperator()(Phi_n, Phi_n);
         E_n = F.trace(Phi_n, nucs);
-
-        OrbitalVector F_phi = F(Phi_n);
-        OrbitalVector grad = orbital::project_out(1.0e-8, Phi_n, F_phi);
-        DoubleVector grad_norms = orbital::get_norms(grad);
-        MSG_INFO("Gradient norms:\n" << grad_norms);
-
-        OrbitalVector grad_sym = orbital::project_out_symmetric(1.0e-8, Phi_n, F_phi);
-        DoubleVector grad_sym_norms = orbital::get_norms(grad_sym);
-        MSG_INFO("Symmetric gradient norms:\n" << grad_sym_norms);
-
-        orbital::normalize(grad);
-        orbital::normalize(grad_sym);
-
-        MSG_INFO("Sym/Non-sym grad ovlp:\n" << orbital::calc_overlap_matrix(grad, grad_sym));
 
         // MSG_INFO("F_mat: \n" << F_mat);
         // MSG_INFO("F_heat: \n" << F_heat);
@@ -495,11 +510,11 @@ bool GroundStateSolver::needDiagonalization(int nIter, bool converged) const {
     return diag;
 }
 
-/** 
+/**
  * @brief Determine new occupation vector according to MOM/IMOM procedure
  * @param Phi_n: orbitals of current iteration n.
  * @param Phi_mom: orbitals of last iteration n-1 (MOM) or first iteration (IMOM).
- * 
+ *
  * According to MOM/IMOM procedure the occupation numbers for the current iteration get
  * determined based on the overlap with the orbitals of an earlier iteration of the SCF procedure.
  */
@@ -531,14 +546,12 @@ DoubleVector GroundStateSolver::getNewOccupations(OrbitalVector &Phi_n, OrbitalV
 
     // sort by highest overlap
     std::vector<std::pair<double, unsigned int>> sortme;
-    for (unsigned int q = 0; q < p.size(); q++)
-        sortme.push_back(std::pair<double, unsigned int>(p(q), q));
+    for (unsigned int q = 0; q < p.size(); q++) sortme.push_back(std::pair<double, unsigned int>(p(q), q));
     std::stable_sort(sortme.begin(), sortme.end());
     std::reverse(sortme.begin(), sortme.end());
 
     // assign the second occupation number to orbitals with highest overlap
-    for (unsigned int q = 0; q < nCurrOcc; q++)
-        occNew(sortme[q].second) = occ2;
+    for (unsigned int q = 0; q < nCurrOcc; q++) occNew(sortme[q].second) = occ2;
     return occNew;
 }
 
