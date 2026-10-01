@@ -32,6 +32,9 @@
 #include "external_solvers/ExternalSolver.h"
 #include "external_solvers/ChemTensorSolver.h"
 
+using PoissonOperator = mrcpp::PoissonOperator;
+using PoissonOperator_p = std::shared_ptr<mrcpp::PoissonOperator>;
+
 
 /** @class LagrangianSolver
  *
@@ -49,28 +52,42 @@ class FockBuilder;
 
 class LagrangianSolver : public SCFSolver {
 public:
-    LagrangianSolver() = default;
+    LagrangianSolver();
     virtual ~LagrangianSolver() override = default;
 
-    //void setRotation(int iter) { this->rotation = iter; }
-    //void setLocalize(bool loc) { this->localize = loc; }
-    //void setCheckpointFile(const std::string &file) { this->chkFile = file; }
+    
+    OrbitalVector get_orbitals(){ return *this->orbitals; };
 
     nlohmann::json optimize(Molecule &mol, FockBuilder &F, ChemTensorSolver &S);
 
 protected:
-    //int rotation{0};      ///< Number of iterations between localization/diagonalization
-    //bool localize{false}; ///< Use localized or canonical orbitals
     //std::string chkFile;  ///< Name of checkpoint file
-    std::vector<SCFEnergy> energy;
+    int nIter{};
+    double scf_tol{};
+    double prec{};
+    double threshold{};
+    PoissonOperator_p P_p{};
+    std::vector<double> energy{};
+    std::shared_ptr<OrbitalVector> orbitals{};
+    
+    void set_orbitals(OrbitalVector Phi);
 
-    //void reset() override;
-    //double calcPropertyError() const;
-    //void printProperty() const;
-    //void printParameters(const std::string &method) const;
-
-    //bool needLocalization(int nIter, bool converged) const;
-    //bool needDiagonalization(int nIter, bool converged) const;
+    void orbital_update(FockBuilder &F, ChemTensorSolver &S);
+    void orbital_basis_change(std::shared_ptr<ComplexMatrix> basis_change);
+    void orbital_update_one_body(FockBuilder &F, ChemTensorSolver &S, OrbitalVector &new_Phi);
+    void orbital_update_two_body(FockBuilder &F, ChemTensorSolver &S, OrbitalVector &old_Phi, OrbitalVector &new_Phi);
 };
 
 } // namespace mrchem
+
+
+
+
+/*  Open questions:
+    - Store orbitals separately or override the ones in molecule?
+    - save solver as a private element?
+    - store copy of integrals and rdms in new basis, or change the originals?
+    - with molecular orbitals does it make sense to diagonalize the 1rdm?
+    - change of basis is now split between External solver (integrals, rdms and lagrange multipliers) and LagrangianSolver (orbitals)
+    
+*/

@@ -56,6 +56,12 @@ public:
     void optimize() override;
 
 private:
+    using RowMajorMatrix = Eigen::Matrix<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+    using RowMajorTensor = Eigen::Tensor<std::complex<double>, 4, Eigen::RowMajor>;
+
+    // row-major copies of the integrals: they own the data that tkin_tensor and velec_tensor point to
+    std::shared_ptr<RowMajorMatrix> one_body_integrals_rowmajor{};
+    std::shared_ptr<RowMajorTensor> two_body_integrals_rowmajor{};
     dense_tensor* tkin_tensor{};
     dense_tensor* velec_tensor{};
     mpo_assembly* assembly{};

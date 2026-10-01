@@ -52,11 +52,11 @@ ChemTensorSolver::ChemTensorSolver(OrbitalVector &Phi, FockBuilder &F, Nuclei &n
 
 ChemTensorSolver::~ChemTensorSolver() {
     if (this->tkin_tensor) {
-        delete this->tkin_tensor->dim;
+        delete[] this->tkin_tensor->dim;
         delete this->tkin_tensor;
     }
     if (this->velec_tensor) {
-        delete this->velec_tensor->dim;
+        delete[] this->velec_tensor->dim;
         delete this->velec_tensor;
     }
     if (this->assembly){ 
@@ -70,8 +70,20 @@ ChemTensorSolver::~ChemTensorSolver() {
 }
 
 void ChemTensorSolver::set_dense_tensors(){
-    using RowMajorMatrix = Eigen::Matrix<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
-    auto one_body_integrals_rowmajor = std::make_shared<RowMajorMatrix>(*this->one_body_integrals);
+    // free the tensors of the previous iteration (the data is owned by the row-major members)
+    if (this->tkin_tensor) {
+        delete[] this->tkin_tensor->dim;
+        delete this->tkin_tensor;
+    }
+    if (this->velec_tensor) {
+        delete[] this->velec_tensor->dim;
+        delete this->velec_tensor;
+    }
+
+    // NOTE: the row-major copies must be members, since the dense tensors only point to their data,
+    // which is read later in optimize()
+    this->one_body_integrals_rowmajor = std::make_shared<RowMajorMatrix>(*this->one_body_integrals);
+    auto &one_body_integrals_rowmajor = this->one_body_integrals_rowmajor;
 
     this->tkin_tensor = new dense_tensor;
     //this->tkin_tensor->data  = static_cast<void*>(this->one_body_integrals->data());
@@ -80,13 +92,12 @@ void ChemTensorSolver::set_dense_tensors(){
     this->tkin_tensor->dtype = CT_DOUBLE_COMPLEX;
     this->tkin_tensor->ndim  = 2;
 
-    using RowMajorTensor = Eigen::Tensor<std::complex<double>, 4, Eigen::RowMajor>;
-
     // shuffle reverses index order: (i,j,k,l) -> (l,k,j,i) to go from col to row major
     Eigen::array<int, 4> reverse = {3, 2, 1, 0};
-    auto two_body_integrals_rowmajor = std::make_shared<RowMajorTensor>(
+    this->two_body_integrals_rowmajor = std::make_shared<RowMajorTensor>(
         this->two_body_integrals->shuffle(reverse).swap_layout()
     );
+    auto &two_body_integrals_rowmajor = this->two_body_integrals_rowmajor;
     
     this->velec_tensor = new dense_tensor;
     //this->velec_tensor->data  = static_cast<void*>(this->two_body_integrals->data()); //->shuffle(Eigen::array<int,4>{0,2,1,3})); //physicist's notation
@@ -110,7 +121,10 @@ void ChemTensorSolver::optimize() {
     if (!this->tkin_tensor || !this->velec_tensor)
         MSG_ABORT("Integrals not set.");
     
-    if(!this->assembly)
+    // free the assembly of the previous iteration before building a new one
+    if(this->assembly)
+        delete_mpo_assembly(this->assembly);
+    else
         this->assembly = new mpo_assembly{};
 
     mpo hamiltonian;
@@ -122,9 +136,11 @@ void ChemTensorSolver::optimize() {
 		MSG_ABORT("internal consistency check for Molecular Hamiltonian MPO failed");
 	
     // initial state vector as MPS
-    if(!this->psi) {
+    // free the MPS of the previous iteration before building a new one
+    if(this->psi)
+        delete_mps(this->psi);
+    else
         this->psi = new mps{};
-    }
 
 	{
 		rng_state rng;
@@ -142,7 +158,7 @@ void ChemTensorSolver::optimize() {
 	// #endif
 
 	// run two-site DMRG
-	this->en_sweeps.reserve(this->num_sweeps);
+	this->en_sweeps.assign(this->num_sweeps, 0.0);
 	std::vector<double> entropy(hamiltonian.nsites - 1);
 	if (dmrg_twosite(&hamiltonian, this->num_sweeps, this->maxiter_lanczos, this->tol_split, this->max_vdim, this->psi, this->en_sweeps.data(), entropy.data()) < 0)
 		std::cerr << "'dmrg_twosite' failed internally" << std::endl;
@@ -150,7 +166,7 @@ void ChemTensorSolver::optimize() {
     
     if(this->energy_correction) {
         for(auto i=0; i<this->num_sweeps; i++)
-            this->en_sweeps.data()[i] += this->E_nn;
+            this->en_sweeps[i] += this->E_nn;
     }
     
 	this->energy = this->en_sweeps[this->num_sweeps - 1];
@@ -158,9 +174,12 @@ void ChemTensorSolver::optimize() {
 
 
     // calculate final bond dimensions
-    this->bond_dimensions.reserve(hamiltonian.nsites + 1);
+    this->bond_dimensions.assign(hamiltonian.nsites + 1, 0);
 	for (int l = 0; l < hamiltonian.nsites + 1; l++)
 		this->bond_dimensions[l] = mps_bond_dim(this->psi, l);
+
+    // the MPO is rebuilt at every call (RDMs only need assembly and psi)
+    delete_mpo(&hamiltonian);
 
     // calculate RDMs
     calculate_rdms();
