@@ -62,7 +62,7 @@ public:
     void setMaxHistory(int max) { this->maxHistory = max; }
     void setMinHistory(int min) { this->minHistory = min; }
 
-    void offloadHistoryToScratch();
+    void offloadHistoryToScratch(bool overwrite = false);
     void restoreHistoryFromScratch();
 
     // clang-format off
@@ -88,7 +88,7 @@ protected:
     int maxHistory;   ///< Oldest iteration is discarded when history exceeds this size
     bool sepOrbitals; ///< Use separate subspace for each orbital
 
-    bool scratch{false}; ///< Whether to store history on disk or in memory
+    bool scratch{true}; ///< Whether to store history on disk or in memory
     int baseCounter{0}; ///< index of oldest orbital in history
 
     std::vector<ComplexMatrix> A; ///< Vector of A matrices

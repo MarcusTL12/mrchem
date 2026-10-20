@@ -73,11 +73,11 @@ void Accelerator::clearLinearSystem() {
     this->c.clear();
 }
 
-void Accelerator::offloadHistoryToScratch() {
+void Accelerator::offloadHistoryToScratch(bool overwrite) {
     MSG_INFO("Offloading kain history to scratch!");
     for (size_t i = 0; i < orbitals.size(); i++) {
-        orbitals[i].offloadToScratch();
-        dOrbitals[i].offloadToScratch();
+        orbitals[i].offloadToScratch(overwrite);
+        dOrbitals[i].offloadToScratch(overwrite);
     }
     MSG_INFO("Success??");
 }
@@ -104,6 +104,7 @@ void Accelerator::restoreHistoryFromScratch() {
  */
 void Accelerator::rotate(const ComplexMatrix &U, bool all) {
     Timer t_tot;
+    if (scratch) restoreHistoryFromScratch();
     int nOrbs = this->orbitals.size() - 1;
     int nFock = this->fock.size() - 1;
     if (all) {
@@ -124,6 +125,7 @@ void Accelerator::rotate(const ComplexMatrix &U, bool all) {
         F = U.adjoint() * F * U;
         dF = U.adjoint() * dF * U;
     }
+    if (scratch) offloadHistoryToScratch(true);
     mrcpp::print::time(this->pl + 2, "Rotating iterative subspace", t_tot);
 }
 
