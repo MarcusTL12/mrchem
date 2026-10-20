@@ -73,6 +73,24 @@ void Accelerator::clearLinearSystem() {
     this->c.clear();
 }
 
+void Accelerator::offloadHistoryToScratch() {
+    MSG_INFO("Offloading kain history to scratch!");
+    for (size_t i = 0; i < orbitals.size(); i++) {
+        orbitals[i].offloadToScratch();
+        dOrbitals[i].offloadToScratch();
+    }
+    MSG_INFO("Success??");
+}
+
+void Accelerator::restoreHistoryFromScratch() {
+    MSG_INFO("Restoring kain history from scratch!");
+    for (size_t i = 0; i < orbitals.size(); i++) {
+        orbitals[i].restoreFromScratch();
+        dOrbitals[i].restoreFromScratch();
+    }
+    MSG_INFO("Success??");
+}
+
 /** @brief Rotate iterative history.
  *
  * @param U: rotation matrix
@@ -135,6 +153,8 @@ void Accelerator::push_back(OrbitalVector &Phi, OrbitalVector &dPhi, ComplexMatr
     if (historyIsFull and this->fock.size() > 0) this->fock.pop_front();
     if (historyIsFull and this->dFock.size() > 0) this->dFock.pop_front();
 
+    if (historyIsFull) { baseCounter++; }
+
     if (not verifyOverlap(Phi)) {
         println(this->pl + 2, " Clearing accelerator");
         this->clear();
@@ -144,6 +164,18 @@ void Accelerator::push_back(OrbitalVector &Phi, OrbitalVector &dPhi, ComplexMatr
     this->dOrbitals.push_back(orbital::deep_copy(dPhi));
     if (F != nullptr) this->fock.push_back(*F);
     if (dF != nullptr) this->dFock.push_back(*dF);
+
+    if (scratch) {
+        std::stringstream phiname, dphiname;
+
+        size_t i = orbitals.size() - 1;
+
+        phiname << "kain_phi_" << (baseCounter + i);
+        dphiname << "kain_dphi_" << (baseCounter + i);
+
+        orbitals[i].setName(phiname.str());
+        dOrbitals[i].setName(dphiname.str());
+    }
 
     mrcpp::print::time(this->pl + 2, "Push back orbitals", t_tot);
 }
@@ -199,6 +231,8 @@ bool Accelerator::verifyOverlap(OrbitalVector &Phi) {
 void Accelerator::accelerate(double prec, OrbitalVector &Phi, OrbitalVector &dPhi, ComplexMatrix *F, ComplexMatrix *dF) {
     if (this->maxHistory < 1) return;
 
+    if (scratch) restoreHistoryFromScratch();
+
     Timer t_tot;
     auto plevel = Printer::getPrintLevel(); // global print level
     mrcpp::print::header(this->pl + 2, "Iterative subspace accelerator");
@@ -215,6 +249,9 @@ void Accelerator::accelerate(double prec, OrbitalVector &Phi, OrbitalVector &dPh
         clearLinearSystem();
     }
     printSizeNodes();
+
+    if (scratch) offloadHistoryToScratch();
+
     mrcpp::print::footer(this->pl + 2, t_tot, 2);
     if (plevel == 1) mrcpp::print::time(this->pl + 1, "Iterative subspace accelerator", t_tot);
 }
