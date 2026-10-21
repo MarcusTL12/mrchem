@@ -730,6 +730,18 @@ User input reference
   
     **Default** ``cube_vectors/``
   
+   :scratch: Directory where temporary scratch files are stored. For some scratch operations, this directory is expected to be a shared directory for all mpi ranks. The `localscratch` path can be specified separately. 
+  
+    **Type** ``str``
+  
+    **Default** ``scratch/``
+  
+   :localscratch: Directory where local scratch files are stored. This directory can exist locally for each mpi rank, such that files written by one rank do not need to be accessible from any other ranks. The path must exist for all mpi ranks. If not specified, the shared `scratch` path will be used. 
+  
+    **Type** ``str``
+  
+    **Default** ````
+  
  :SCF: Includes parameters related to the ground state SCF orbital optimization. 
 
   :red:`Keywords`

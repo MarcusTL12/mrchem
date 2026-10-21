@@ -55,6 +55,10 @@ def translate_input(user_dict):
             "pp_prec": mol_dict["pseudopotentials"]["pp_prec"]
         }
 
+    localscratch = user_dict["Files"]["localscratch"]
+    if localscratch == "":
+        localscratch = user_dict["Files"]["scratch"]
+
     # piece everything together
     program_dict = {
         "schema_name": "mrchem_input",
@@ -67,6 +71,8 @@ def translate_input(user_dict):
         "rsp_calculations": rsp_dict,
         "geom_opt": user_dict['GeometryOptimizer'],
         "constants": user_dict["Constants"],
+        "scratch": user_dict["Files"]["scratch"],
+        "localscratch": localscratch,
     }
     return program_dict
 
