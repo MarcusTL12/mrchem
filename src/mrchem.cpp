@@ -29,6 +29,8 @@
 #include <MRCPP/Timer>
 #include <MRCPP/Parallel>
 
+#include "qmfunctions/Orbital.h"
+
 #include "driver.h"
 #include "mrchem.h"
 #include "mrenv.h"
@@ -60,6 +62,9 @@ int main(int argc, char **argv) {
     const auto &rsp_inp = json_inp["rsp_calculations"];
     const auto &con_inp = json_inp["constants"];
     const auto &geopt_inp = json_inp["geom_opt"];
+
+    Orbital::setSharedScratchDir(json_inp["scratch"]);
+    Orbital::setLocalScratchDir(json_inp["localscratch"]);
 
     // Instantiate the physical constants singleton
     PhysicalConstants::Initialize(con_inp);
