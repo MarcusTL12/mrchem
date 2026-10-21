@@ -763,6 +763,12 @@ User input reference
   
     **Default** ``5``
   
+   :kain_scratch: How strictly to store kain history in scratch. 0 keeps the entire history in memory always. 1 stores the history in scratch when not in use, but loads the entire history when used. 2 only keeps a single history point in memory at a time. 
+  
+    **Type** ``int``
+  
+    **Default** ``0``
+  
    :rotation: Number of iterations between each diagonalization/localization. 
   
     **Type** ``int``

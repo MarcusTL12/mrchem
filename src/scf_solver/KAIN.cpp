@@ -51,6 +51,8 @@ void KAIN::setupLinearSystem() {
     if (this->orbitals.size() < 2) MSG_ABORT("Not enough history to setup system of equations");
     size_t nHistory = this->orbitals.size() - 1;
 
+    MSG_INFO("Hei!");
+
     std::vector<ComplexMatrix> A_matrices;
     std::vector<ComplexVector> b_vectors;
 
@@ -63,21 +65,35 @@ void KAIN::setupLinearSystem() {
         auto &fPhi_m = this->dOrbitals[nHistory][n];
         if (mrcpp::mpi::my_func(phi_m)) {
 
+            if (scratch == 2) {
+                phi_m.restoreFromScratch();
+                fPhi_m.restoreFromScratch();
+            }
+
             for (size_t i = 0; i < nHistory; i++) {
                 auto &phi_i = this->orbitals[i][n];
                 auto dPhi_im = phi_m.paramCopy(true);
+                if (scratch == 2) phi_i.restoreFromScratch();
                 mrcpp::add(dPhi_im, 1.0, phi_i, -1.0, phi_m, -1.0);
 
                 for (size_t j = 0; j < nHistory; j++) {
                     auto &fPhi_j = this->dOrbitals[j][n];
                     auto dfPhi_jm = fPhi_m.paramCopy(true);
+                    if (scratch == 2) fPhi_j.restoreFromScratch();
                     mrcpp::add(dfPhi_jm, 1.0, fPhi_j, -1.0, fPhi_m, -1.0);
 
                     // Ref. Harrisons KAIN paper the following has the wrong sign,
                     // but we define the updates (lowercase f) with opposite sign.
                     orbA(i, j) -= mrcpp::dot(dPhi_im, dfPhi_jm);
+
+                    if (scratch == 2) fPhi_j.offloadToScratch(false, true);
                 }
                 orbB(i) += mrcpp::dot(dPhi_im, fPhi_m);
+                if (scratch == 2) phi_i.offloadToScratch(false, true);
+            }
+            if (scratch == 2) {
+                phi_m.offloadToScratch(false, true);
+                fPhi_m.offloadToScratch(false, true);
             }
         }
         double alpha = (this->scaling.size() == nOrbitals) ? scaling[n] : 1.0;
@@ -130,6 +146,8 @@ void KAIN::expandSolution(double prec, OrbitalVector &Phi, OrbitalVector &dPhi, 
     int nHistory = this->orbitals.size() - 1;
     int nOrbitals = this->orbitals[nHistory].size();
 
+    MSG_INFO("Hei!");
+
     // Orbitals are unchanged, updates are overwritten
     dPhi = orbital::param_copy(this->dOrbitals[nHistory]);
 
@@ -142,6 +160,12 @@ void KAIN::expandSolution(double prec, OrbitalVector &Phi, OrbitalVector &dPhi, 
 
             auto &phi_m = this->orbitals[nHistory][n];
             auto &fPhi_m = this->dOrbitals[nHistory][n];
+
+            if (scratch == 2) {
+                phi_m.restoreFromScratch();
+                fPhi_m.restoreFromScratch();
+            }
+
             totCoefs.push_back({1.0, 0.0});
             totOrbs.push_back(fPhi_m);
 
@@ -154,10 +178,12 @@ void KAIN::expandSolution(double prec, OrbitalVector &Phi, OrbitalVector &dPhi, 
 
                 partCoefs[0] = {1.0, 0.0};
                 auto &phi_j = this->orbitals[j][n];
+                if (scratch == 2) phi_j.restoreFromScratch();
                 partOrbs.push_back(phi_j);
 
                 partCoefs[1] = {1.0, 0.0};
                 auto &fPhi_j = this->dOrbitals[j][n];
+                if (scratch == 2) fPhi_j.restoreFromScratch();
                 partOrbs.push_back(fPhi_j);
 
                 partCoefs[2] = {-1.0, 0.0};
@@ -172,6 +198,11 @@ void KAIN::expandSolution(double prec, OrbitalVector &Phi, OrbitalVector &dPhi, 
                 auto c_j = this->c[m](j);
                 totCoefs.push_back(c_j);
                 totOrbs.push_back(partStep);
+
+                if (scratch == 2) {
+                    phi_j.offloadToScratch(false, true);
+                    fPhi_j.offloadToScratch(false, true);
+                }
             }
 
             std::vector<ComplexDouble> coefsVec(totCoefs.size());
@@ -179,6 +210,11 @@ void KAIN::expandSolution(double prec, OrbitalVector &Phi, OrbitalVector &dPhi, 
 
             dPhi[n] = Phi[n].paramCopy(true);
             mrcpp::linear_combination(dPhi[n], coefsVec, totOrbs, prec);
+
+            if (scratch == 2) {
+                phi_m.offloadToScratch(false, true);
+                fPhi_m.offloadToScratch(false, true);
+            }
         }
     }
 

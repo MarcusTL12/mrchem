@@ -44,8 +44,8 @@ namespace mrchem {
 
 class KAIN final : public Accelerator {
 public:
-    KAIN(int max, int min = 0, bool sep = false, std::vector<double> scaling = {})
-            : Accelerator(max, min, sep)
+    KAIN(int max, int min = 0, bool sep = false, std::vector<double> scaling = {}, int scratch = 0)
+            : Accelerator(max, min, sep, scratch)
             , scaling(scaling) {}
 
 protected:

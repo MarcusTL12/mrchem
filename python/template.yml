@@ -733,6 +733,14 @@ sections:
         default: 5
         docstring: |
           Length of KAIN iterative history.
+      - name: kain_scratch
+        type: int
+        default: 0
+        docstring: |
+          How strictly to store kain history in scratch. 0 keeps the entire history
+          in memory always. 1 stores the history in scratch when not in use,
+          but loads the entire history when used. 2 only keeps a single history
+          point in memory at a time.
       - name: rotation
         type: int
         default: 0

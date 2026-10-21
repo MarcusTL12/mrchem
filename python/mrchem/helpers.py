@@ -282,6 +282,7 @@ def write_scf_solver(user_dict, wf_dict):
         "environment": wf_dict["environment_name"],
         "external_field": wf_dict["external_name"],
         "kain": scf_dict["kain"],
+        "kain_scratch": scf_dict["kain_scratch"],
         "max_iter": scf_dict["max_iter"],
         "rotation": scf_dict["rotation"],
         "localize": scf_dict["localize"],

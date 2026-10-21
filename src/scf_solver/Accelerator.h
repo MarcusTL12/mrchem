@@ -54,7 +54,7 @@ namespace mrchem {
  */
 class Accelerator {
 public:
-    Accelerator(int max, int min, bool sep);
+    Accelerator(int max, int min, bool sep, int scratch);
     virtual ~Accelerator() { this->clear(); }
     void clear();
 
@@ -88,7 +88,7 @@ protected:
     int maxHistory;   ///< Oldest iteration is discarded when history exceeds this size
     bool sepOrbitals; ///< Use separate subspace for each orbital
 
-    bool scratch{true}; ///< Whether to store history on disk or in memory
+    int scratch{0}; ///< Whether to store history on disk or in memory
     int baseCounter{0}; ///< index of oldest orbital in history
 
     std::vector<ComplexMatrix> A; ///< Vector of A matrices

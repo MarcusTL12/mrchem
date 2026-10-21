@@ -51,6 +51,7 @@ public:
     virtual ~SCFSolver() = default;
 
     void setHistory(int hist) { this->history = hist; }
+    void setKainScratch(int scratch) { this->kain_scratch = scratch; }
     void setCheckpoint(bool chk) { this->checkpoint = chk; }
     void setThreshold(double orb, double prop);
     void setOrbitalPrec(double init, double final);
@@ -64,6 +65,7 @@ public:
 
 protected:
     int history{0};                        ///< Maximum length of KAIN history
+    int kain_scratch{0};
     int maxIter{-1};                       ///< Maximum number of iterations
     bool checkpoint{false};                ///< Dump orbitals to file every iteration
     double orbThrs{-1.0};                  ///< Convergence threshold for norm of orbital update

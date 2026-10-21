@@ -42,10 +42,11 @@ namespace mrchem {
  * @param min: min length of history
  * @param sep: solve separate eqations for each orbital
  */
-Accelerator::Accelerator(int max, int min, bool sep)
+Accelerator::Accelerator(int max, int min, bool sep, int scratch)
         : minHistory(min)
         , maxHistory(max)
-        , sepOrbitals(sep) {
+        , sepOrbitals(sep)
+        , scratch(scratch) {
     if (this->minHistory < 0) this->minHistory = 0;
     if (this->maxHistory < this->minHistory) MSG_ERROR("Invalid argument");
 }
@@ -60,6 +61,7 @@ void Accelerator::clear() {
     while (this->dOrbitals.size() > 0) this->dOrbitals.pop_front();
     while (this->fock.size() > 0) this->fock.pop_front();
     while (this->dFock.size() > 0) this->dFock.pop_front();
+    baseCounter = 0;
     clearLinearSystem();
 }
 
@@ -74,21 +76,17 @@ void Accelerator::clearLinearSystem() {
 }
 
 void Accelerator::offloadHistoryToScratch(bool overwrite) {
-    MSG_INFO("Offloading kain history to scratch!");
     for (size_t i = 0; i < orbitals.size(); i++) {
-        orbitals[i].offloadToScratch(overwrite);
-        dOrbitals[i].offloadToScratch(overwrite);
+        orbitals[i].offloadToScratch(overwrite, true);
+        dOrbitals[i].offloadToScratch(overwrite, true);
     }
-    MSG_INFO("Success??");
 }
 
 void Accelerator::restoreHistoryFromScratch() {
-    MSG_INFO("Restoring kain history from scratch!");
     for (size_t i = 0; i < orbitals.size(); i++) {
         orbitals[i].restoreFromScratch();
         dOrbitals[i].restoreFromScratch();
     }
-    MSG_INFO("Success??");
 }
 
 /** @brief Rotate iterative history.
@@ -177,6 +175,11 @@ void Accelerator::push_back(OrbitalVector &Phi, OrbitalVector &dPhi, ComplexMatr
 
         orbitals[i].setName(phiname.str());
         dOrbitals[i].setName(dphiname.str());
+
+        if (scratch == 2) {
+            orbitals[i].offloadToScratch(false, true);
+            dOrbitals[i].offloadToScratch(false, true);
+        }
     }
 
     mrcpp::print::time(this->pl + 2, "Push back orbitals", t_tot);
@@ -199,9 +202,11 @@ bool Accelerator::verifyOverlap(OrbitalVector &Phi) {
             auto &phi_i = Phi[i];
             if (mrcpp::mpi::my_func(phi_i)) {
                 auto &last_i = this->orbitals[nHistory][i];
+                if (scratch == 2) last_i.restoreFromScratch();
                 if (not mrcpp::mpi::my_func(last_i)) MSG_ABORT("MPI rank mismatch");
                 auto sqNorm = phi_i.getSquareNorm();
                 auto overlap = mrcpp::dot(phi_i, last_i);
+                if (scratch == 2) last_i.offloadToScratch(false, true);
                 if (std::abs(overlap) < 0.5 * sqNorm) {
                     mrcpp::print::value(this->pl + 2, "Overlap not verified ", std::abs(overlap));
                     out(i) = 1;
@@ -233,7 +238,9 @@ bool Accelerator::verifyOverlap(OrbitalVector &Phi) {
 void Accelerator::accelerate(double prec, OrbitalVector &Phi, OrbitalVector &dPhi, ComplexMatrix *F, ComplexMatrix *dF) {
     if (this->maxHistory < 1) return;
 
-    if (scratch) restoreHistoryFromScratch();
+    MSG_INFO("Hei!");
+
+    if (scratch == 1) restoreHistoryFromScratch();
 
     Timer t_tot;
     auto plevel = Printer::getPrintLevel(); // global print level
@@ -243,6 +250,7 @@ void Accelerator::accelerate(double prec, OrbitalVector &Phi, OrbitalVector &dPh
     this->push_back(Phi, dPhi, F, dF);
 
     int nHistory = this->orbitals.size() - 1;
+    MSG_INFO("nHistory: " << nHistory);
     if (nHistory > this->minHistory) {
         setupLinearSystem();
         solveLinearSystem();
@@ -252,7 +260,7 @@ void Accelerator::accelerate(double prec, OrbitalVector &Phi, OrbitalVector &dPh
     }
     printSizeNodes();
 
-    if (scratch) offloadHistoryToScratch();
+    if (scratch == 1) offloadHistoryToScratch(false);
 
     mrcpp::print::footer(this->pl + 2, t_tot, 2);
     if (plevel == 1) mrcpp::print::time(this->pl + 1, "Iterative subspace accelerator", t_tot);

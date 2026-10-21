@@ -326,6 +326,7 @@ json driver::scf::run(const json &json_scf, Molecule &mol) {
         print_utils::headline(0, "Computing Ground State Wavefunction");
 
         auto kain = json_scf["scf_solver"]["kain"];
+        auto kain_scratch = json_scf["scf_solver"]["kain_scratch"];
         auto method = json_scf["scf_solver"]["method"];
         auto relativity = json_scf["scf_solver"]["relativity"];
         auto environment = json_scf["scf_solver"]["environment"];
@@ -344,6 +345,7 @@ json driver::scf::run(const json &json_scf, Molecule &mol) {
 
         GroundStateSolver solver;
         solver.setHistory(kain);
+        solver.setKainScratch(kain_scratch);
         solver.setRotation(rotation);
         solver.setLocalize(localize);
         solver.setMethodName(method);
