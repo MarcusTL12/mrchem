@@ -84,6 +84,8 @@ def main():
         user_dict["Response"]["path_checkpoint"],
         user_dict["Response"]["path_orbitals"],
         user_dict["Plotter"]["path"],
+        user_dict["Files"]["scratch"],
+        user_dict["Files"]["localscratch"]
     ]:
         if not Path(d).exists():
             Path(d).mkdir()
