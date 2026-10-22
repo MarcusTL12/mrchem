@@ -58,7 +58,9 @@ ExchangePotential::ExchangePotential(PoissonOperator_p P, OrbitalVector_p Phi, d
  */
 void ExchangePotential::rotate(const ComplexMatrix &U) {
     if (this->exchange.size() == 0) return;
+    if (scratch) exchange.restoreFromScratch();
     mrcpp::rotate(this->exchange, U, this->apply_prec);
+    if (scratch) exchange.offloadToScratch(true, true);
 
     // NOTE: The following MPI point is currently NOT implemented!
     //
@@ -122,6 +124,9 @@ void ExchangePotential::setup(double prec) {
     mrcpp::print::value(3, "Precision", prec, "(rel)", 5);
     mrcpp::print::separator(3, '-');
     if (mrcpp::mpi::world_size > 1 and mrcpp::mpi::bank_size < 1) MSG_ABORT("MPI bank required!");
+
+    if (scratch == 1) exchange.restoreFromScratch();
+
     setApplyPrec(prec);
     setupBank();
     if (this->pre_compute) setupInternal(prec);
@@ -131,6 +136,13 @@ void ExchangePotential::setup(double prec) {
         auto avgNodes = orbital::get_n_nodes(this->exchange, true);
         auto avgSize = orbital::get_size_nodes(this->exchange, true);
         mrcpp::print::tree(2, "Exchange operator (avg.)", avgNodes, avgSize, t);
+    }
+
+    if (scratch == 1) {
+        exchange.setName("exchange_potential");
+
+        // Assume completely new exchange potentials, so overwrite old files
+        exchange.offloadToScratch(true, true);
     }
     mrcpp::print::footer(3, timer, 2);
 }

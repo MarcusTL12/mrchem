@@ -115,7 +115,14 @@ Orbital ExchangePotentialD1::apply(Orbital phi_p) {
         }
         return calcExchange(phi_p);
     } else {
-        return this->exchange[i];
+        if (scratch == 0) {
+            return this->exchange[i];
+        } else if (scratch == 1) {
+            exchange[i].restoreFromScratch();
+            mrcpp::deep_copy(out_p, exchange[i]);
+            exchange[i].offloadToScratch(false, true);
+            return out_p;
+        }
     }
 }
 
