@@ -238,8 +238,6 @@ bool Accelerator::verifyOverlap(OrbitalVector &Phi) {
 void Accelerator::accelerate(double prec, OrbitalVector &Phi, OrbitalVector &dPhi, ComplexMatrix *F, ComplexMatrix *dF) {
     if (this->maxHistory < 1) return;
 
-    MSG_INFO("Hei!");
-
     if (scratch == 1) restoreHistoryFromScratch();
 
     Timer t_tot;
@@ -250,7 +248,6 @@ void Accelerator::accelerate(double prec, OrbitalVector &Phi, OrbitalVector &dPh
     this->push_back(Phi, dPhi, F, dF);
 
     int nHistory = this->orbitals.size() - 1;
-    MSG_INFO("nHistory: " << nHistory);
     if (nHistory > this->minHistory) {
         setupLinearSystem();
         solveLinearSystem();

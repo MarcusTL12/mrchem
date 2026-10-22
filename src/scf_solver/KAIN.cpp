@@ -51,8 +51,6 @@ void KAIN::setupLinearSystem() {
     if (this->orbitals.size() < 2) MSG_ABORT("Not enough history to setup system of equations");
     size_t nHistory = this->orbitals.size() - 1;
 
-    MSG_INFO("Hei!");
-
     std::vector<ComplexMatrix> A_matrices;
     std::vector<ComplexVector> b_vectors;
 
@@ -145,8 +143,6 @@ void KAIN::expandSolution(double prec, OrbitalVector &Phi, OrbitalVector &dPhi, 
     Timer t_tot;
     int nHistory = this->orbitals.size() - 1;
     int nOrbitals = this->orbitals[nHistory].size();
-
-    MSG_INFO("Hei!");
 
     // Orbitals are unchanged, updates are overwritten
     dPhi = orbital::param_copy(this->dOrbitals[nHistory]);
