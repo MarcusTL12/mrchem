@@ -254,7 +254,6 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
     ComplexMatrix &F_mat = mol.getFockMatrix();
 
     auto scaling = std::vector<double>(Phi_n.size(), 1.0);
-    MSG_INFO("Kain scratch level: " << kain_scratch);
     KAIN kain(this->history, 0, false, scaling, kain_scratch);
 
     DoubleVector errors = DoubleVector::Ones(Phi_n.size());
