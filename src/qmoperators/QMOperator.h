@@ -68,10 +68,14 @@ public:
     double prec() { return this->apply_prec; }
     bool isImag() { return this->imag; }
 
+    void setScratch(int level) { scratch = level; }
+
     friend RankZeroOperator;
 
 protected:
     double apply_prec{-1.0};
+
+    int scratch{0};
 
     void setApplyPrec(double prec) {
         if (this->apply_prec < 0.0) {

@@ -742,6 +742,27 @@ User input reference
   
     **Default** ````
   
+ :Scratch: Specify how aggressively to offload functions and operators to scratch. Generally behaviour is as follows: Level 0 means no use of scratch. Level 1 means scratch is used to offload data when not in use, but all loaded into memory when in use. Level 2 and up means scatch will be used actively while data is in use to lower max memory footprint of object. 
+
+  :red:`Keywords`
+   :scratch_level: Global scratch level. Individual terms can be set separately. 
+  
+    **Type** ``int``
+  
+    **Default** ``0``
+  
+   :kain: Level 0 keeps the entire history in memory always. Level 1 stores the history in scratch when not in use, but loads the entire history when used. Level 2 only keeps a single history point in memory at a time. 
+  
+    **Type** ``int``
+  
+    **Default** ``-1``
+  
+   :exchange: Level 0: No scratch Level 1+: Exchange potentials offloaded to scratch when not in use. 
+  
+    **Type** ``int``
+  
+    **Default** ``-1``
+  
  :SCF: Includes parameters related to the ground state SCF orbital optimization. 
 
   :red:`Keywords`
@@ -762,12 +783,6 @@ User input reference
     **Type** ``int``
   
     **Default** ``5``
-  
-   :kain_scratch: How strictly to store kain history in scratch. 0 keeps the entire history in memory always. 1 stores the history in scratch when not in use, but loads the entire history when used. 2 only keeps a single history point in memory at a time. 
-  
-    **Type** ``int``
-  
-    **Default** ``0``
   
    :rotation: Number of iterations between each diagonalization/localization. 
   

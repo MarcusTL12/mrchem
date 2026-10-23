@@ -100,6 +100,7 @@ def write_scf_fock(user_dict, wf_dict, origin):
         fock_dict["exchange_operator"] = {
             "poisson_prec": user_dict["Precisions"]["poisson_prec"],
             "exchange_prec": user_dict["Precisions"]["exchange_prec"],
+            "scratch": min(user_dict["Scratch"]["exchange"], 1),
         }
 
     # Exchange-Correlation
@@ -282,7 +283,7 @@ def write_scf_solver(user_dict, wf_dict):
         "environment": wf_dict["environment_name"],
         "external_field": wf_dict["external_name"],
         "kain": scf_dict["kain"],
-        "kain_scratch": scf_dict["kain_scratch"],
+        "kain_scratch": user_dict["Scratch"]["kain"],
         "max_iter": scf_dict["max_iter"],
         "rotation": scf_dict["rotation"],
         "localize": scf_dict["localize"],

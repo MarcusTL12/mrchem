@@ -72,6 +72,8 @@ public:
 
     ComplexDouble trace(OrbitalVector &Phi) { return 0.5 * RankZeroOperator::trace(Phi); }
 
+    void setScratch(int level) { exchange->setScratch(level); }
+
 private:
     std::shared_ptr<ExchangePotential> exchange{nullptr};
 };

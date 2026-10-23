@@ -41,6 +41,13 @@ def translate_input(user_dict):
     if user_dict["world_unit"] == "angstrom":
         origin = [pc["angstrom2bohrs"] * r for r in origin]
 
+    scratch_level = user_dict["Scratch"]["scratch_level"]
+
+    for k in user_dict["Scratch"]:
+        if k != "scratch_level":
+            if user_dict["Scratch"][k] == -1:
+                user_dict["Scratch"][k] = scratch_level
+
     # prepare bits and pieces
     mol_dict = write_molecule(user_dict, origin)
     mpi_dict = write_mpi(user_dict)
@@ -160,6 +167,8 @@ def write_scf_calculation(user_dict, origin):
     scf_dict = {}
     scf_dict["fock_operator"] = write_scf_fock(user_dict, wf_dict, origin)
     scf_dict["initial_guess"] = write_scf_guess(user_dict, wf_dict)
+
+    scf_dict["kain_scratch"] = user_dict["Scratch"]["kain"]
 
     path_orbitals = user_dict["SCF"]["path_orbitals"]
     if user_dict["SCF"]["write_orbitals"]:

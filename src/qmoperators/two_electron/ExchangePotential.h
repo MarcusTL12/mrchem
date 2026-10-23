@@ -63,8 +63,6 @@ protected:
     std::shared_ptr<OrbitalVector> orbitals;         ///< Internal orbitals defining the exchange operator
     std::shared_ptr<mrcpp::PoissonOperator> poisson; ///< Poisson operator to compute orbital contributions
 
-    int scratch{1};
-
     void setPreCompute() { this->pre_compute = true; }
 
     auto &getPoisson() { return this->poisson; }

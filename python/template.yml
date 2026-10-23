@@ -714,6 +714,35 @@ sections:
           need to be accessible from any other ranks. The path must exist for all
           mpi ranks. If not specified, the shared `scratch` path will be used.
 
+  - name: Scratch
+    docstring: |
+      Specify how aggressively to offload functions and operators to scratch.
+      Generally behaviour is as follows: Level 0 means no use of scratch.
+      Level 1 means scratch is used to offload data when not in use, but all
+      loaded into memory when in use. Level 2 and up means scatch will be
+      used actively while data is in use to lower max memory footprint of
+      object.
+    keywords:
+      - name: scratch_level
+        type: int
+        default: 0
+        docstring: |
+          Global scratch level. Individual terms can be set separately.
+      - name: kain
+        type: int
+        default: -1
+        docstring: |
+          Level 0 keeps the entire history in memory always.
+          Level 1 stores the history in scratch when not in use,
+          but loads the entire history when used.
+          Level 2 only keeps a single history point in memory at a time.
+      - name: exchange
+        type: int
+        default: -1
+        docstring: |
+          Level 0: No scratch
+          Level 1+: Exchange potentials offloaded to scratch when not in use.
+
   - name: SCF
     docstring: |
       Includes parameters related to the ground state SCF orbital optimization.
@@ -733,14 +762,6 @@ sections:
         default: 5
         docstring: |
           Length of KAIN iterative history.
-      - name: kain_scratch
-        type: int
-        default: 0
-        docstring: |
-          How strictly to store kain history in scratch. 0 keeps the entire history
-          in memory always. 1 stores the history in scratch when not in use,
-          but loads the entire history when used. 2 only keeps a single history
-          point in memory at a time.
       - name: rotation
         type: int
         default: 0

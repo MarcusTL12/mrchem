@@ -1537,6 +1537,7 @@ void driver::build_fock_operator(const json &json_fock, Molecule &mol, FockBuild
             auto K_p = std::make_shared<ExchangeOperator>(P_p, Phi_p, X_p, Y_p, exchange_prec);
             F.getExchangeOperator() = K_p;
         }
+        F.getExchangeOperator()->setScratch(json_fock["exchange_operator"]["scratch"]);
         scf::_useExchange = true; // determine if exact exchange is used in order to prevent MOM/IMOM calculations
     }
     ///////////////////////////////////////////////////////////
