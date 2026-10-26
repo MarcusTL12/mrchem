@@ -1291,16 +1291,17 @@ void driver::build_fock_operator(const json &json_fock, Molecule &mol, FockBuild
         auto proj_prec = json_fock["nuclear_operator"]["proj_prec"];
         auto smooth_prec = json_fock["nuclear_operator"]["smooth_prec"];
         auto shared_memory = json_fock["nuclear_operator"]["shared_memory"];
+        auto scratch = json_fock["nuclear_operator"]["scratch"];
         std::shared_ptr<NuclearOperator> V_p;
         if (json_fock.contains("pseudopotential")) {
-            NuclearOperator all_el = NuclearOperator(all_electron_nuclei, proj_prec, smooth_prec, shared_memory, nuc_model);
+            NuclearOperator all_el = NuclearOperator(all_electron_nuclei, proj_prec, smooth_prec, shared_memory, nuc_model, scratch);
             std::string nuc_model_pp = "pp";
             NuclearOperator pp = NuclearOperator(pp_nuclei, proj_prec, smooth_prec, shared_memory, nuc_model_pp);
             all_el.add(pp);
             V_p = std::make_shared<NuclearOperator>(all_el);
         }
         else {
-            V_p = std::make_shared<NuclearOperator>(nuclei, proj_prec, smooth_prec, shared_memory, nuc_model);
+            V_p = std::make_shared<NuclearOperator>(nuclei, proj_prec, smooth_prec, shared_memory, nuc_model, scratch);
         }
         F.getNuclearOperator() = V_p;
 

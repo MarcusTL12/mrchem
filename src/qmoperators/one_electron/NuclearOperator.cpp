@@ -57,7 +57,7 @@ namespace mrchem {
  *  @param smooth_prec: Precision for smoothing of analytic function
  *  @param mpi_share: Should MPI ranks on the same machine share this function?
  */
-NuclearOperator::NuclearOperator(const Nuclei &nucs, double proj_prec, double smooth_prec, bool mpi_share, const std::string &model) {
+NuclearOperator::NuclearOperator(const Nuclei &nucs, double proj_prec, double smooth_prec, bool mpi_share, const std::string &model, int scratch) {
     if (proj_prec < 0.0) MSG_ABORT("Negative projection precision");
     if (smooth_prec < 0.0) smooth_prec = proj_prec;
     Timer t_tot;
@@ -113,8 +113,15 @@ NuclearOperator::NuclearOperator(const Nuclei &nucs, double proj_prec, double sm
     Timer t_com;
     auto V_tot = std::make_shared<QMPotential>(1, mpi_share);
     allreducePotential(tot_prec, *V_tot, V_loc);
+    V_tot->setScratch(scratch);
+    V_tot->name = "nuclear_potential";
     V_func = *V_tot;
     t_com.stop();
+
+    if (scratch) {
+        V_tot->offloadToScratch(false, false);
+        mrcpp::mpi::barrier(mrcpp::mpi::comm_wrk);
+    }
 
     t_tot.stop();
     print_utils::qmfunction(1, "Allreduce potential", *V_tot, t_com);

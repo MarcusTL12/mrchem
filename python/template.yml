@@ -736,12 +736,18 @@ sections:
           Level 1 stores the history in scratch when not in use,
           but loads the entire history when used.
           Level 2 only keeps a single history point in memory at a time.
+      - name: nuclear_potential
+        type: int
+        default: -1
+        docstring: |
+          Level 0: No scratch
+          Level 1: Nuclear potential offloaded to scratch when not in use.
       - name: exchange
         type: int
         default: -1
         docstring: |
           Level 0: No scratch
-          Level 1+: Exchange potentials offloaded to scratch when not in use.
+          Level 1: Exchange potentials offloaded to scratch when not in use.
 
   - name: SCF
     docstring: |
