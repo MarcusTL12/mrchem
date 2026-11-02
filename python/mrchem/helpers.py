@@ -82,6 +82,7 @@ def write_scf_fock(user_dict, wf_dict, origin):
         "smooth_prec": user_dict["Precisions"]["nuclear_prec"],
         "nuclear_model": user_dict["WaveFunction"]["nuclear_model"],
         "shared_memory": user_dict["MPI"]["share_nuclear_potential"],
+        "scratch": min(user_dict["Scratch"]["nuclear_potential"], 2),
     }
 
     # Reaction

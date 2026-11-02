@@ -138,9 +138,10 @@ void QMPotential::calc(mrcpp::CompFunction<3> &out, mrcpp::CompFunction<3> &inp,
     mrcpp::CompFunction<3> &V = *this;
     double coef = 1.0;
     mrcpp::copy_grid(out, inp);
-    if (scratch) V.restoreFromScratch();
+    if (scratch) V.restoreFromScratch(false);
     mrcpp::multiply(prec, out, coef, inp, V, adap);
-    if (scratch) V.offloadToScratch(false, false);
+    if (scratch == 1) V.offloadToScratch(false, true, true);
+    else if (scratch == 2) V.offloadToScratch(false, false, true);
 }
 
 } // namespace mrchem

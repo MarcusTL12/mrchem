@@ -38,9 +38,9 @@
 #include "analyticfunctions/PointNucleusHFYGB.h"
 #include "analyticfunctions/PointNucleusMinimum.h"
 #include "analyticfunctions/PointNucleusParabola.h"
+#include "chemistry/chemistry_utils.h"
 #include "pseudopotential/PPNucleus.h"
 #include "pseudopotential/pseudopotential.h"
-#include "chemistry/chemistry_utils.h"
 #include "qmfunctions/Density.h"
 #include "qmoperators/QMPotential.h"
 #include "utils/math_utils.h"
@@ -113,14 +113,22 @@ NuclearOperator::NuclearOperator(const Nuclei &nucs, double proj_prec, double sm
     Timer t_com;
     auto V_tot = std::make_shared<QMPotential>(1, mpi_share);
     allreducePotential(tot_prec, *V_tot, V_loc);
-    V_tot->setScratch(scratch);
-    V_tot->name = "nuclear_potential";
     V_func = *V_tot;
     t_com.stop();
 
-    if (scratch) {
-        V_tot->offloadToScratch(false, false);
-        mrcpp::mpi::barrier(mrcpp::mpi::comm_wrk);
+    V_tot->setScratch(scratch);
+    if (scratch == 1) {
+        // Local scratch
+        // Need to give unique names to each node in case local scratch
+        // directory is actually a shared directory to not collide file names.
+        std::stringstream name;
+        name << "nuclear_potential_node_" << mrcpp::mpi::sh_group_rank;
+        V_tot->name = name.str();
+        V_tot->offloadToScratch(true, true, true);
+    } else if (scratch == 2) {
+        // Shared scratch
+        V_tot->name = "nuclear_potential";
+        V_tot->offloadToScratch(true, false, true);
     }
 
     t_tot.stop();

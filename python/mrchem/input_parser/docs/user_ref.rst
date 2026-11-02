@@ -757,7 +757,13 @@ User input reference
   
     **Default** ``-1``
   
-   :exchange: Level 0: No scratch Level 1+: Exchange potentials offloaded to scratch when not in use. 
+   :nuclear_potential: Level 0: No scratch Level 1: Nuclear potential offloaded to scratch when not in use. 
+  
+    **Type** ``int``
+  
+    **Default** ``-1``
+  
+   :exchange: Level 0: No scratch Level 1: Exchange potentials offloaded to scratch when not in use. 
   
     **Type** ``int``
   

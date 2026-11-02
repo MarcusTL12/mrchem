@@ -741,7 +741,8 @@ sections:
         default: -1
         docstring: |
           Level 0: No scratch
-          Level 1: Nuclear potential offloaded to scratch when not in use.
+          Level 1: Nuclear potential offloaded to local scratch when not in use.
+          Level 2: Nuclear potential offloaded to shared scratch when not in use.
       - name: exchange
         type: int
         default: -1
