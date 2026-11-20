@@ -38,8 +38,13 @@ extern "C" {
 
 #include <limits>
 #include <random>
+#include <sstream>
+
+#include <MRCPP/Printer>
 
 #include "ChemTensorSolver.h"
+#include "fiedler_utils.h"
+#include "utils/print_utils.h"
 
 namespace mrchem {
 
@@ -53,6 +58,10 @@ ChemTensorSolver::ChemTensorSolver(OrbitalVector &Phi, FockBuilder &F, Nuclei &n
     this->maxiter_lanczos = dict_chemtensor["maxiter_lanczos"];
     this->tol_split = dict_chemtensor["tol_split"];
     this->start_from_previous_mps = dict_chemtensor["start_from_previous_mps"];
+    this->site_order = dict_chemtensor["site_order"];
+    if (this->site_order != "none" and this->site_order != "fiedler") MSG_ABORT("Unknown site_order: " << this->site_order);
+    this->reorder_every_iter = dict_chemtensor["reorder_every_iter"];
+    this->reorder_thrs = dict_chemtensor["reorder_thrs"];
 
     ct_verbosity = CT_VERBOSITY_TIMING;
 
@@ -96,18 +105,29 @@ void ChemTensorSolver::set_dense_tensors() {
     }
 
     // NOTE: the row-major copies must be members, since the dense tensors only point to their data,
-    // which is read later in optimize(). In the real mode only the real parts are passed (real DMRG)
-    // shuffle reverses index order: (i,j,k,l) -> (l,k,j,i) to go from col to row major
-    Eigen::array<int, 4> reverse = {3, 2, 1, 0};
+    // which is read later in optimize(). In the real mode only the real parts are passed (real DMRG).
+    // The integrals are written in chain order: R(s,t,..) = g(perm[s], perm[t], ..), row-major
+    const int N = this->one_body_integrals->rows();
+    const IntVector &p = this->perm;
     void *tkin_data, *velec_data;
     if (this->real) {
-        this->one_body_integrals_rowmajor_real = std::make_shared<RowMajorMatrixReal>(this->one_body_integrals->real());
-        this->two_body_integrals_rowmajor_real = std::make_shared<RowMajorTensorReal>(this->two_body_integrals->real().shuffle(reverse).swap_layout());
+        auto h_rm = std::make_shared<RowMajorMatrixReal>(N, N);
+        auto g_rm = std::make_shared<RowMajorTensorReal>(N, N, N, N);
+        for (int s = 0; s < N; s++)
+            for (int t = 0; t < N; t++) (*h_rm)(s, t) = (*this->one_body_integrals)(p(s), p(t)).real();
+        fiedler::fill_rowmajor(*this->two_body_integrals, *g_rm, p);
+        this->one_body_integrals_rowmajor_real = h_rm;
+        this->two_body_integrals_rowmajor_real = g_rm;
         tkin_data = static_cast<void *>(this->one_body_integrals_rowmajor_real->data());
         velec_data = static_cast<void *>(this->two_body_integrals_rowmajor_real->data());
     } else {
-        this->one_body_integrals_rowmajor = std::make_shared<RowMajorMatrix>(*this->one_body_integrals);
-        this->two_body_integrals_rowmajor = std::make_shared<RowMajorTensor>(this->two_body_integrals->shuffle(reverse).swap_layout());
+        auto h_rm = std::make_shared<RowMajorMatrix>(N, N);
+        auto g_rm = std::make_shared<RowMajorTensor>(N, N, N, N);
+        for (int s = 0; s < N; s++)
+            for (int t = 0; t < N; t++) (*h_rm)(s, t) = (*this->one_body_integrals)(p(s), p(t));
+        fiedler::fill_rowmajor(*this->two_body_integrals, *g_rm, p);
+        this->one_body_integrals_rowmajor = h_rm;
+        this->two_body_integrals_rowmajor = g_rm;
         tkin_data = static_cast<void *>(this->one_body_integrals_rowmajor->data());
         velec_data = static_cast<void *>(this->two_body_integrals_rowmajor->data());
     }
@@ -129,7 +149,55 @@ void ChemTensorSolver::set_dense_tensors() {
 
 void ChemTensorSolver::set_integrals(OrbitalVector &Phi) {
     ExternalSolver::set_integrals(Phi);
+    update_site_order();
     set_dense_tensors();
+}
+
+/**
+ * @brief Decide the order of the orbitals in the DMRG chain
+ *
+ * Uses the exchange matrix K of the current integrals. At the first call (or at every call, if reorder_every_iter)
+ * the Fiedler order replaces the current one if its cost is lower by the factor (1 - reorder_thrs).
+ * With site_order = none the order is never changed (identity).
+ */
+void ChemTensorSolver::update_site_order() {
+    const int L = this->one_body_integrals->rows();
+    bool first = false;
+    if (this->perm.size() != L) {
+        this->perm = IntVector::LinSpaced(L, 0, L - 1);
+        first = true;
+    }
+    this->perm_changed = false;
+    this->perm_cost = 0.0;
+    if (this->site_order == "none") return;
+
+    DoubleMatrix K = fiedler::exchange_matrix(*this->two_body_integrals);
+    IntVector cand = fiedler::order(K, 10.0 * this->prec, this->perm);
+    const double c_old = fiedler::cost(K, this->perm);
+    const double c_new = fiedler::cost(K, cand);
+    if ((first or this->reorder_every_iter) and c_new < (1.0 - this->reorder_thrs) * c_old) {
+        this->perm = cand;
+        this->perm_changed = true;
+    }
+    this->perm_cost = fiedler::cost(K, this->perm);
+
+    std::stringstream o_perm;
+    for (int s = 0; s < L; s++) o_perm << this->perm(s) << (s + 1 < L ? " " : "");
+    print_utils::text(1, "Site order", o_perm.str());
+    print_utils::scalar(1, "Site order cost", this->perm_cost, "", 6);
+    if (mrcpp::Printer::getPrintLevel() >= 2) {
+        print_utils::scalar(2, "Fiedler candidate cost", c_new, "", 6);
+        const DoubleVector cuts = fiedler::bond_cuts(K, this->perm);
+        if (cuts.size() > 0) {
+            print_utils::scalar(2, "Total cut (sum K |ds|)", cuts.sum(), "", 6);
+            print_utils::scalar(2, "Largest cut over bonds", cuts.maxCoeff(), "", 6);
+        }
+        double kmin = std::numeric_limits<double>::max();
+        for (int i = 0; i < L; i++)
+            for (int j = i + 1; j < L; j++)
+                if (K(i, j) > 0.0) kmin = std::min(kmin, K(i, j));
+        if (kmin < std::numeric_limits<double>::max()) print_utils::scalar(2, "Smallest nonzero K_ij", kmin, "", 6, true);
+    }
 }
 
 void ChemTensorSolver::optimize() {
@@ -153,7 +221,7 @@ void ChemTensorSolver::optimize() {
     // initial state vector as MPS
     // if requested, start from the MPS of the previous iteration (if any, and of the same data type
     // as the Hamiltonian: not the case after switching from real to complex), otherwise from a random one
-    if (this->start_from_previous_mps && this->psi && this->psi->a[0].dtype == hamiltonian.a[0].dtype) {
+    if (this->start_from_previous_mps && !this->perm_changed && this->psi && this->psi->a[0].dtype == hamiltonian.a[0].dtype) {
         // nothing to do: dmrg_twosite uses this->psi as initial state
     } else {
         // free the MPS of the previous iteration before building a new one
@@ -258,8 +326,31 @@ void ChemTensorSolver::calculate_rdms() {
 
     // enforce hermiticity rdm2(i,j,k,l) = conj(rdm2(k,l,i,j)), with rdm2(i,j,k,l) = 1/2 <a+_i a+_j a_l a_k>
     ComplexTensorR4 rdm2_sym(N, N, N, N);
-    Eigen::array<int, 4> perm = {2, 3, 0, 1};
-    rdm2_sym = 0.5 * (rdm2 + rdm2.conjugate().shuffle(perm));
+    Eigen::array<int, 4> swap_pairs = {2, 3, 0, 1};
+    rdm2_sym = 0.5 * (rdm2 + rdm2.conjugate().shuffle(swap_pairs));
+
+    // the RDMs are in chain order: bring them back to the order of the orbitals
+    if (this->site_order != "none") {
+        this->one_rdm = std::make_shared<ComplexMatrix>(fiedler::unpermute(*this->one_rdm, this->perm));
+        rdm2_sym = fiedler::unpermute(rdm2_sym, this->perm);
+    }
+
+    // check: energy from the RDMs (in orbital order) against the one from the MPO (without E_nn)
+    if (mrcpp::Printer::getPrintLevel() >= 3) {
+        // in the real mode the MPO only has the real parts of the integrals, so use the same here
+        const int L = this->one_body_integrals->rows();
+        auto val = [this](ComplexDouble x) { return this->real ? ComplexDouble(x.real(), 0.0) : x; };
+        ComplexDouble e_rdm = 0.0;
+        for (int i = 0; i < L; i++)
+            for (int j = 0; j < L; j++) e_rdm += val((*this->one_body_integrals)(i, j)) * val((*this->one_rdm)(i, j));
+        for (int i = 0; i < L; i++)
+            for (int j = 0; j < L; j++)
+                for (int k = 0; k < L; k++)
+                    for (int l = 0; l < L; l++) e_rdm += val((*this->two_body_integrals)(i, j, k, l)) * val(rdm2_sym(i, j, k, l));
+        print_utils::scalar(3, "MPO energy (no E_nn)", avr.real(), "(au)", 12);
+        print_utils::scalar(3, "RDM energy (no E_nn)", e_rdm.real(), "(au)", 12);
+        print_utils::scalar(3, "RDM - MPO energy", e_rdm.real() - avr.real(), "(au)", 12);
+    }
 
     // store two body RDM in variable of parent class
     this->two_rdm = std::make_shared<ComplexTensorR4>(std::move(rdm2_sym));

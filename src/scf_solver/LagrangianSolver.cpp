@@ -153,9 +153,17 @@ json LagrangianSolver::optimize(Molecule &mol, FockBuilder &F, ChemTensorSolver 
         this->property.push_back(S.get_energy());
         double err_p = getUpdate(this->property, this->property.size(), true);
         converged = (nIter > 0) and checkConvergence(0.0, err_p);
+        // a new site order restarts the DMRG from a random MPS: the energy can jump (it is not a converged step), and the old
+        // KAIN updates came from the previous finite-M problem, so they are dropped to be safe
+        if (S.site_order_changed()) {
+            converged = false;
+            if (kain) kain->clear();
+        }
 
         json_cycle["energy_total"] = S.get_energy();
         json_cycle["energy_update"] = err_p;
+        json_cycle["site_order"] = std::vector<int>(S.get_site_order().data(), S.get_site_order().data() + S.get_site_order().size());
+        json_cycle["site_order_cost"] = S.get_site_order_cost();
         auto pprec = Printer::getPrecision();
         print_utils::scalar(0, "Total energy", S.get_energy(), "(au)", 2 * pprec);
         print_utils::scalar(0, "Energy difference", err_p, "(au)", pprec, true);

@@ -20,6 +20,7 @@ target_include_directories(mrchem-tests SYSTEM PRIVATE
   $<TARGET_PROPERTY:Eigen3::Eigen,INTERFACE_INCLUDE_DIRECTORIES>
   )
 
+add_subdirectory(external_solvers)
 add_subdirectory(qmfunctions)
 add_subdirectory(qmoperators)
 add_subdirectory(solventeffect)
@@ -34,6 +35,7 @@ target_link_libraries(mrchem-tests
 add_subdirectory(2h2o_far_energy_pbe)
 # add_subdirectory(beh2_snqm_geomopt)
 add_subdirectory(cavity_input_parser)
+add_subdirectory(dmrg_input_parser)
 add_subdirectory(cube_parser)
 add_subdirectory(h_linear_poisson_boltzmann)
 add_subdirectory(h_poisson_boltzmann)

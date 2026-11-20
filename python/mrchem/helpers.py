@@ -347,6 +347,10 @@ def write_external_solver(user_dict):
         "tol_split": ext_dict["tol_split"],
         "start_from_previous_mps": ext_dict["start_from_previous_mps"],
         "mps_seed": ext_dict["mps_seed"],
+        "site_order": ext_dict["site_order"].lower(),
+        "site_order_source": ext_dict["site_order_source"].lower(),
+        "reorder_every_iter": ext_dict["reorder_every_iter"],
+        "reorder_thrs": ext_dict["reorder_thrs"],
         "prec": ext_dict["prec"],
     }
 

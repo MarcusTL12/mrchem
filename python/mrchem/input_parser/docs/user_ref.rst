@@ -1105,6 +1105,39 @@ User input reference
   
     **Default** ``-1``
   
+   :site_order: Order of the orbitals in the DMRG chain. 'none' keeps the order of the input orbitals. 'fiedler' puts strongly coupled orbitals next to each other (Fiedler vector of the exchange matrix), which lowers the energy at a given max_vdim. The bond dimensions are printed in chain order. 
+  
+    **Type** ``str``
+  
+    **Default** ``none``
+  
+    **Predicates**
+      - ``value.lower() in ['none', 'fiedler']``
+  
+   :site_order_source: Matrix used to decide the Fiedler order. Only 'exchange' (the exchange integrals K_ij) is available. 
+  
+    **Type** ``str``
+  
+    **Default** ``exchange``
+  
+    **Predicates**
+      - ``value.lower() in ['exchange']``
+  
+   :reorder_every_iter: Whether to also reconsider the order at every orbital iteration (otherwise only before the first one). After a change of order the DMRG restarts from a random MPS. 
+  
+    **Type** ``bool``
+  
+    **Default** ``False``
+  
+   :reorder_thrs: A new order is only accepted if its cost is lower than the cost of the current order by this fraction. 
+  
+    **Type** ``float``
+  
+    **Default** ``0.1``
+  
+    **Predicates**
+      - ``0.0 <= value < 1.0``
+  
    :prec: Precision parameter used to compute the one- and two-body integrals passed to the external solver. 
   
     **Type** ``float``

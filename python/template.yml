@@ -1069,6 +1069,35 @@ sections:
         default: -1
         docstring: |
           Seed for the random initial MPS of the DMRG calculation. If negative, a random seed is used.
+      - name: site_order
+        type: str
+        default: none
+        predicates:
+          - value.lower() in ['none', 'fiedler']
+        docstring: |
+          Order of the orbitals in the DMRG chain. 'none' keeps the order of the input orbitals. 'fiedler' puts strongly
+          coupled orbitals next to each other (Fiedler vector of the exchange matrix), which lowers the energy at a given
+          max_vdim. The bond dimensions are printed in chain order.
+      - name: site_order_source
+        type: str
+        default: exchange
+        predicates:
+          - value.lower() in ['exchange']
+        docstring: |
+          Matrix used to decide the Fiedler order. Only 'exchange' (the exchange integrals K_ij) is available.
+      - name: reorder_every_iter
+        type: bool
+        default: false
+        docstring: |
+          Whether to also reconsider the order at every orbital iteration (otherwise only before the first one).
+          After a change of order the DMRG restarts from a random MPS.
+      - name: reorder_thrs
+        type: float
+        default: 0.1
+        predicates:
+          - 0.0 <= value < 1.0
+        docstring: |
+          A new order is only accepted if its cost is lower than the cost of the current order by this fraction.
       - name: prec
         type: float
         default: user['world_prec']

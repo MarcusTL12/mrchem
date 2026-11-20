@@ -31,6 +31,8 @@ extern "C" {
     struct mps;
 }
 
+#include <string>
+
 #include "ExternalSolver.h"
 #include "mrchem.h"
 #include "qmfunctions/Orbital.h"
@@ -50,12 +52,18 @@ public:
 
     void set_integrals(OrbitalVector &Phi);
 
+    const IntVector &get_site_order() const { return this->perm; }
+    double get_site_order_cost() const { return this->perm_cost; }
+    bool site_order_changed() const { return this->perm_changed; }
+
     const int* get_bond_dimensions() const { return this->bond_dimensions.data(); }
     // const double* get_en_sweeps() const { return this->en_sweeps.data(); }
 
     void optimize() override;
 
 private:
+    friend class ChemTensorSolverTester; ///< unit tests (tests/external_solvers/chemtensor_solver.cpp)
+
     using RowMajorMatrix = Eigen::Matrix<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
     using RowMajorTensor = Eigen::Tensor<std::complex<double>, 4, Eigen::RowMajor>;
     using RowMajorMatrixReal = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
@@ -80,11 +88,19 @@ private:
     bool start_from_previous_mps;
     int mps_seed{};
 
+    std::string site_order{"none"}; ///< order of the orbitals in the chain: none (input order) or fiedler
+    bool reorder_every_iter{false}; ///< try to reorder at every cycle (otherwise only at the first one)
+    double reorder_thrs{0.1};       ///< relative cost decrease needed to accept a new order
+    IntVector perm{};               ///< perm[s] is the orbital at site s
+    bool perm_changed{false};       ///< the order changed in the last call of set_integrals
+    double perm_cost{0.0};          ///< Fiedler cost of the current order
+
     int32_t qnum_sector{};
 
     std::vector<int> bond_dimensions{};
     // std::vector<double> en_sweeps{};
 
+    void update_site_order();
     void set_dense_tensors();
     void calculate_rdms() override;
 
