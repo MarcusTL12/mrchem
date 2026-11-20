@@ -191,6 +191,12 @@ json LagrangianSolver::optimize(Molecule &mol, FockBuilder &F, ChemTensorSolver 
 
         json_out["cycles"].push_back(json_cycle);
         if (converged) break;
+
+        if (this->localize and nIter < 2) {
+            ComplexMatrix tmpfock(orbitals->size(), orbitals->size());
+            orbital::localize(this->prec, *this->orbitals, tmpfock);
+            if (kain) kain->clear();
+        }
     }
 
     F.clear();
