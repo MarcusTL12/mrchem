@@ -71,6 +71,8 @@ void update_two_body_serial(double prec, double threshold, bool real_orbitals, O
                 // state = g_jl * Phi[k]
                 Orbital state;
                 mrcpp::multiply(state, g_jl, orbitals[k], prec);
+                Orbital state_conj;
+                if (l != j and not real_orbitals) mrcpp::multiply(state_conj, g_jl, orbitals[k], prec, false, false, true); // conjugate is applied on g_jl (first argument)
 
                 for (int m = 0; m < L; m++) {
                     ComplexDouble denom;
@@ -82,9 +84,16 @@ void update_two_body_serial(double prec, double threshold, bool real_orbitals, O
                         continue; // both below threshold, skip
 
                     ComplexDouble u = U_dE2(m, j, k, l);
-                    if (l != j) u += U_dE2(m, l, k, j);
-
-                    new_Phi[m].add(coeff_(2.0 * u / denom), state);
+                    if (l == j) {
+                        new_Phi[m].add(coeff_(2.0 * u / denom), state);
+                    } else if (real_orbitals) {
+                        u += U_dE2(m, l, k, j); // real orbitals: g_lj = g_jl, one shared product
+                        new_Phi[m].add(coeff_(2.0 * u / denom), state);
+                    } else {
+                        // complex orbitals: g_lj = conj(g_jl), so the (l,j) term needs conj(g_jl) * Phi[k]
+                        new_Phi[m].add(coeff_(2.0 * u / denom), state);
+                        new_Phi[m].add(coeff_(2.0 * U_dE2(m, l, k, j) / denom), state_conj);
+                    }
                 }
             }
         }
@@ -155,6 +164,8 @@ void update_two_body_distributed(double prec, double threshold, bool real_orbita
         for (int k = 0; k < L; k++) {
             Orbital state;
             mrcpp::multiply(state, g_jl, Phi_loc[k], prec);
+            Orbital state_conj;
+            if (l != j and not real_orbitals) mrcpp::multiply(state_conj, g_jl, Phi_loc[k], prec, false, false, true); // conjugate is applied on g_jl (first argument)
             for (int m = 0; m < L; m++) {
                 ComplexDouble denom;
                 if (std::abs(one_rdm(m, m)) > threshold)
@@ -164,8 +175,16 @@ void update_two_body_distributed(double prec, double threshold, bool real_orbita
                 else
                     continue;
                 ComplexDouble u = U_dE2(m, j, k, l);
-                if (l != j) u += U_dE2(m, l, k, j);
-                Acc[m].add(coeff_(2.0 * u / denom), state);
+                if (l == j) {
+                    Acc[m].add(coeff_(2.0 * u / denom), state);
+                } else if (real_orbitals) {
+                    u += U_dE2(m, l, k, j); // real orbitals: g_lj = g_jl, one shared product
+                    Acc[m].add(coeff_(2.0 * u / denom), state);
+                } else {
+                    // complex orbitals: g_lj = conj(g_jl), so the (l,j) term needs conj(g_jl) * Phi[k]
+                    Acc[m].add(coeff_(2.0 * u / denom), state);
+                    Acc[m].add(coeff_(2.0 * U_dE2(m, l, k, j) / denom), state_conj);
+                }
             }
         }
         g_jl.free();

@@ -281,7 +281,8 @@ DoubleVector LagrangianSolver::orbital_update(FockBuilder &F, ChemTensorSolver &
 
     // apply Helmholtz kernel and update orbitals
     OrbitalVector new_orbitals = H(new_Phi);
-    mrcpp::rotate(new_orbitals, *basis_change); // rotate back to old basis
+    // rotate back to the old basis: phi_n = sum_p conj(U(p,n)) chi_p (rotate multiplies from the right: Psi_i = sum_j M(j,i) Phi_j)
+    mrcpp::rotate(new_orbitals, ComplexMatrix(basis_change->conjugate()));
     OrbitalVector diff_orbitals = orbital::add(1.0, new_orbitals, -1.0, *this->orbitals);
 
     if (kain) { kain->accelerate(1e-10, *this->orbitals, diff_orbitals); }
@@ -301,7 +302,7 @@ void LagrangianSolver::orbital_update_one_body(FockBuilder &F, ChemTensorSolver 
     ComplexMatrix &basis_change = *(S.get_basis_change());
 
     OrbitalVector V_phi = V(*this->orbitals);
-    mrcpp::rotate(V_phi, basis_change.adjoint());
+    mrcpp::rotate(V_phi, ComplexMatrix(basis_change.transpose()));
 
     ComplexMatrix rot_coef(L, L);
     for (size_t i = 0; i < L; i++) {
@@ -311,7 +312,7 @@ void LagrangianSolver::orbital_update_one_body(FockBuilder &F, ChemTensorSolver 
 
     ComplexMatrix net_rot_matrix = rot_coef * basis_change;
 
-    OrbitalVector rotated = orbital::rotate(*this->orbitals, net_rot_matrix.adjoint());
+    OrbitalVector rotated = orbital::rotate(*this->orbitals, net_rot_matrix.transpose());
     new_Phi = orbital::add(1.0, V_phi, 1.0, rotated);
 }
 
