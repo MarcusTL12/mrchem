@@ -71,7 +71,7 @@ void ExternalSolver::set_integrals(OrbitalVector &Phi) {
         double max_imag = std::max(this->one_body_integrals->imag().cwiseAbs().maxCoeff(),
                                    Eigen::Tensor<double, 0>(this->two_body_integrals->imag().abs().maximum())());
         if (max_imag > this->imag_threshold) {
-            std::cout << "Complex integrals (max imaginary part " << max_imag << "): switching to complex mode" << std::endl;
+            println(0, "Complex integrals (max imaginary part " << max_imag << "): switching to complex mode");
             this->real = false;
         }
     }

@@ -1116,7 +1116,7 @@ json driver::lag::run(const json &json_lag, Molecule &mol) {
     // TODO: check if lag_solver is in input json??
     
     int norbs = json_lag["n_orbitals"];
-    std::cout << "number of orbitals: " << norbs << std::endl;
+    println(0, "number of orbitals: " << norbs);
     if (norbs < 1) {
         MSG_ERROR("Invalid number of orbitals");
         json_out["success"] = false;
@@ -1173,7 +1173,7 @@ json driver::lag::run(const json &json_lag, Molecule &mol) {
 
     json_out["lag_solver"] = solver.optimize(mol, F, dmrg_solver);
     json_out["success"] = json_out["lag_solver"]["converged"];
-    std::cout << "optimization: done" << std::endl;
+    println(0, "optimization: done");
 
     return json_out;
 }

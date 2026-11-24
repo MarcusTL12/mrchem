@@ -40,6 +40,7 @@ extern "C" {
 #include <random>
 #include <sstream>
 
+#include <MRCPP/Parallel>
 #include <MRCPP/Printer>
 
 #include "ChemTensorSolver.h"
@@ -51,7 +52,7 @@ namespace mrchem {
 ChemTensorSolver::ChemTensorSolver(OrbitalVector &Phi, FockBuilder &F, Nuclei &nucs, int Ne, int spin, json dict_chemtensor)
         : ExternalSolver(F, nucs, dict_chemtensor["prec"]) {
     this->qnum_sector = encode_quantum_number_pair(Ne, spin);
-    std::cout << "Initialized ChemTensorSolver with Ne = " << Ne << " and spin = " << spin << std::endl;
+    println(0, "Initialized ChemTensorSolver with Ne = " << Ne << " and spin = " << spin);
 
     this->max_vdim = dict_chemtensor["max_vdim"];
     this->num_sweeps = dict_chemtensor["num_sweeps"];
@@ -63,7 +64,8 @@ ChemTensorSolver::ChemTensorSolver(OrbitalVector &Phi, FockBuilder &F, Nuclei &n
     this->reorder_every_iter = dict_chemtensor["reorder_every_iter"];
     this->reorder_thrs = dict_chemtensor["reorder_thrs"];
 
-    ct_verbosity = CT_VERBOSITY_TIMING;
+    // ChemTensor logs to stdout from C: only the grand master should print
+    ct_verbosity = mrcpp::mpi::grand_master() ? CT_VERBOSITY_TIMING : CT_VERBOSITY_NONE;
 
     // seed of the random initial MPS: if negative, draw a random one
     int seed = dict_chemtensor["mps_seed"];

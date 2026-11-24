@@ -325,7 +325,7 @@ void LagrangianSolver::orbital_update_two_body(FockBuilder &F, ChemTensorSolver 
 
     // two-body term: m on the new basis (through U_dE2), j, k, l on the old basis (like two_rdm)
     for (int j = 0; j < L; j++) {
-        std::cout << "Orbital " << j + 1 << " out of " << L << std::endl;
+        println(3, "Orbital " << j + 1 << " out of " << L);
         for (int l = j; l < L; l++) { // Triangular loop l >= j
             // g_jl = poisson(Phi[j]^* * Phi[l]) (the MRCPP kernel is already 1/|r-r'|, no 4*pi as in python)
             Orbital g_jl = orbitals[j].paramCopy(true);
