@@ -220,8 +220,7 @@ void update_two_body_distributed(double prec, double threshold, bool real_orbita
         }
         Acc[m].free();
     }
-    AccBank.clear(); // collective: frees the bank memory and acts as barrier
-    PhiBank.clear();
+    // Single block: the bank accounts are freed by their destructors (clear() is only needed to free memory between blocks, S10)
     if (me == 0) MSG_INFO("Skipped " << num_skipped << " orbital pairs on the master");
 }
 
