@@ -124,6 +124,8 @@ TEST_CASE("Lagrangian two-body update vs serial oracle", "[lagrangian_update]") 
     lagrangian::update_two_body(prec, 1.0e-10, true, Phi, one_rdm, lag, U_dE2, test);
 
     for (int m = 0; m < L; m++) {
+        // distributed path: only the owner of m receives the sum
+        if (mrcpp::mpi::wrk_size > 1 and not mrcpp::mpi::my_func(m)) continue;
         Orbital diff;
         mrcpp::add(diff, 1.0, ref[m], -1.0, test[m], -1.0);
         INFO("orbital " << m);
