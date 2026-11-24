@@ -45,6 +45,7 @@ extern "C" {
 
 #include "ChemTensorSolver.h"
 #include "fiedler_utils.h"
+#include "utils/mpi_bcast.h"
 #include "utils/print_utils.h"
 
 namespace mrchem {
@@ -73,7 +74,17 @@ ChemTensorSolver::ChemTensorSolver(OrbitalVector &Phi, FockBuilder &F, Nuclei &n
         std::random_device rd;
         seed = std::uniform_int_distribution<int>(0, std::numeric_limits<int>::max())(rd);
     }
+    // every worker must use the master's seed (collective: all workers construct the solver)
+    mpi_utils::bcast(seed);
+    println(0, "DMRG random seed: " << seed);
     this->mps_seed = seed;
+}
+
+void ChemTensorSolver::broadcast_results() {
+    mpi_utils::bcast(this->energy);
+    mpi_utils::bcast(this->perm_changed);
+    mpi_utils::bcast(this->perm);
+    mpi_utils::bcast(this->real);
 }
 
 ChemTensorSolver::~ChemTensorSolver() {

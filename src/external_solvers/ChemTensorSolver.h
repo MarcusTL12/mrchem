@@ -55,6 +55,10 @@ public:
     const IntVector &get_site_order() const { return this->perm; }
     double get_site_order_cost() const { return this->perm_cost; }
     bool site_order_changed() const { return this->perm_changed; }
+    /** @brief Make the results of optimize() identical on all workers (values of the master).
+     *
+     * MPI: collective over the worker communicator; broadcasts energy, site order and the real flag. */
+    void broadcast_results();
 
     const int* get_bond_dimensions() const { return this->bond_dimensions.data(); }
     // const double* get_en_sweeps() const { return this->en_sweeps.data(); }

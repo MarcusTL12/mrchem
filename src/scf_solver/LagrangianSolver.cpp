@@ -37,6 +37,7 @@
 #include "qmoperators/one_electron/NuclearOperator.h"
 #include "qmoperators/two_electron/FockBuilder.h"
 #include "qmoperators/two_electron/two_electron_utils.h"
+#include "utils/mpi_bcast.h"
 #include "utils/print_utils.h"
 #include <iostream>
 #include <utils/Printer.h>
@@ -60,6 +61,7 @@ void make_uniform_type(OrbitalVector &Phi, bool force_complex = false) {
     bool any_complex = force_complex;
     for (auto &phi : Phi)
         if (phi.iscomplex()) any_complex = true;
+    any_complex = mpi_utils::allreduce_or(any_complex); // collective: all workers must agree on the type
     if (!any_complex) return;
 
     for (auto &phi : Phi) {
@@ -115,6 +117,7 @@ json LagrangianSolver::optimize(Molecule &mol, FockBuilder &F, ChemTensorSolver 
     bool any_complex = false;
     for (auto &phi : *this->orbitals)
         if (phi.iscomplex()) any_complex = true;
+    any_complex = mpi_utils::allreduce_or(any_complex);
     this->real_orbitals = true;
     S.set_real(true);
     if (this->force_complex or any_complex) set_complex_orbitals(S);
@@ -145,8 +148,12 @@ json LagrangianSolver::optimize(Molecule &mol, FockBuilder &F, ChemTensorSolver 
         // set integrals, run DMRG and calculate RDMS
         S.set_integrals(*this->orbitals);
         // the external solver switches to the complex mode if the integrals are complex
+        // all workers must agree (the check uses rank-local integrals, and the switch below is collective)
+        S.set_real(not mpi_utils::allreduce_or(not S.is_real()));
         if (this->real_orbitals and not S.is_real()) set_complex_orbitals(S);
         S.optimize();
+        S.broadcast_results(); // all workers continue with the master's energy, site order and type
+        if (this->real_orbitals and not S.is_real()) set_complex_orbitals(S);
 
         // check if converged (before the update, so that orbitals and last energy match)
         // NOTE: no orbital threshold, convergence only on the energy
@@ -178,12 +185,19 @@ json LagrangianSolver::optimize(Molecule &mol, FockBuilder &F, ChemTensorSolver 
             if (this->real_orbitals) S_m12 = S_m12.real().cast<ComplexDouble>();
             mrcpp::rotate(*this->orbitals, S_m12, this->prec);
 
-            if (this->real_orbitals)
+            if (this->real_orbitals) {
+                bool bad = false;
                 for (auto &phi : *this->orbitals)
-                    if (phi.iscomplex()) MSG_ABORT("Complex orbital in the real mode");
+                    if (phi.iscomplex()) bad = true;
+                if (mpi_utils::allreduce_or(bad)) MSG_ABORT("Complex orbital in the real mode");
+            }
         }
 
-        printOrbitals(S.get_lagrange_multipliers()->real().diagonal(), S.get_one_rdm()->real().diagonal(), errors, *this->orbitals);
+        // the multipliers and the 1-RDM are null if no DMRG result is available (e.g. max_iter == 1)
+        const auto lag = S.get_lagrange_multipliers();
+        const auto rdm1 = S.get_one_rdm();
+        const DoubleVector zeros = DoubleVector::Zero(orbitals->size());
+        printOrbitals(lag ? DoubleVector(lag->real().diagonal()) : zeros, rdm1 ? DoubleVector(rdm1->real().diagonal()) : zeros, errors, *this->orbitals);
 
         t_scf.stop();
         json_cycle["wall_time"] = t_scf.elapsed();
