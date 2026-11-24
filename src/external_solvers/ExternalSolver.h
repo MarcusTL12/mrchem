@@ -54,6 +54,8 @@ public:
     std::shared_ptr<ComplexMatrix> get_one_rdm() { return this->one_rdm; }
     std::shared_ptr<ComplexTensorR4> get_two_rdm() { return this->two_rdm; }
     std::shared_ptr<ComplexMatrix> get_basis_change() { return this->basis_change; }
+    /** @brief U_dE2(m,j,k,l) = sum_a basis_change(m,a) * two_rdm(a,j,k,l); available after calculate_helmholtz_coefficients() */
+    std::shared_ptr<ComplexTensorR4> get_U_dE2() { return this->U_dE2; }
     std::shared_ptr<ComplexMatrix> get_lagrange_multipliers() { return this->lag_coeff; }
     std::shared_ptr<DoubleVector> get_helmholtz_coefficients() { return this->helm_coeff; }
 
@@ -80,6 +82,7 @@ protected:
     std::shared_ptr<ComplexMatrix> lag_coeff{};
     std::shared_ptr<DoubleVector> helm_coeff{};
     std::shared_ptr<ComplexMatrix> basis_change{};
+    std::shared_ptr<ComplexTensorR4> U_dE2{}; ///< basis_change * two_rdm, computed once per orbital update
 
     void set_one_body_integrals(OrbitalVector &Phi, MomentumOperator &P, NuclearOperator &V);
     void set_two_body_integrals(OrbitalVector &Phi);

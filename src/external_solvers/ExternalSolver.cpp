@@ -165,7 +165,8 @@ void ExternalSolver::calculate_helmholtz_coefficients() {
     // h'(m,m) + correction(m)/one_rdm'(m,m), with the two-body part of lag_coeff'(m,m)
     // correction(m) = 2 * sum_{a,b,jkl} U(m,a) * two_rdm(a,j,k,l) * g(b,j,k,l) * conj(U(m,b))
     // (one_body_integrals is already in the new basis, two_rdm and g are in the old one)
-    ComplexTensorR4 U_dE2(L, L, L, L);  // sum_a U(m,a) * two_rdm(a,j,k,l)
+    this->U_dE2 = std::make_shared<ComplexTensorR4>(L, L, L, L); // sum_a U(m,a) * two_rdm(a,j,k,l)
+    auto &U_dE2 = *this->U_dE2;
     ComplexTensorR4 U_g(L, L, L, L);    // sum_b conj(U(m,b)) * g(b,j,k,l)
     U_dE2.setZero();
     U_g.setZero();

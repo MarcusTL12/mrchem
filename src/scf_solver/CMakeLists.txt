@@ -6,4 +6,5 @@ target_sources(mrchem PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/LinearResponseSolver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/SCFSolver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/LagrangianSolver.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/lagrangian_utils.cpp
     )

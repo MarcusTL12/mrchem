@@ -36,6 +36,7 @@
 #include "qmfunctions/orbital_utils.h"
 #include "qmoperators/one_electron/NuclearOperator.h"
 #include "qmoperators/two_electron/FockBuilder.h"
+#include "lagrangian_utils.h"
 #include "qmoperators/two_electron/two_electron_utils.h"
 #include "utils/mpi_bcast.h"
 #include "utils/print_utils.h"
@@ -315,74 +316,7 @@ void LagrangianSolver::orbital_update_one_body(FockBuilder &F, ChemTensorSolver 
 }
 
 void LagrangianSolver::orbital_update_two_body(FockBuilder &F, ChemTensorSolver &S, OrbitalVector &new_Phi) {
-    const int L = this->orbitals->size();
-    auto &one_rdm = *(S.get_one_rdm());
-    auto &two_rdm = *(S.get_two_rdm());
-    auto &lag_coeff = *(S.get_lagrange_multipliers());
-    auto &basis_change = *(S.get_basis_change());
-    auto &orbitals = *this->orbitals;
-
-    // Computing total density to use for screening potential computations
-    Density rho;
-    density::compute(prec, rho, *this->orbitals, DensityType::Total);
-
-    // precompute U_dE2(m,j,k,l) = sum_i U(m,i) * two_rdm(i,j,k,l)
-    ComplexTensorR4 U_dE2(L, L, L, L);
-    U_dE2.setZero();
-    for (int m = 0; m < L; m++)
-        for (int i = 0; i < L; i++)
-            for (int j = 0; j < L; j++)
-                for (int k = 0; k < L; k++)
-                    for (int l = 0; l < L; l++) U_dE2(m, j, k, l) += basis_change(m, i) * two_rdm(i, j, k, l);
-
-    int num_skipped = 0;
-
-    // two-body term: m on the new basis (through U_dE2), j, k, l on the old basis (like two_rdm)
-    for (int j = 0; j < L; j++) {
-        println(3, "Orbital " << j + 1 << " out of " << L);
-        for (int l = j; l < L; l++) { // Triangular loop l >= j
-            // g_jl = poisson(Phi[j]^* * Phi[l]) (the MRCPP kernel is already 1/|r-r'|, no 4*pi as in python)
-            Orbital g_jl = orbitals[j].paramCopy(true);
-
-            double max_coef = 0.0;
-
-            for (int k = 0; k < L; k++) {
-                for (int m = 0; m < L; m++) {
-                    max_coef = std::max(max_coef, std::abs(U_dE2(m, j, k, l)));
-                    max_coef = std::max(max_coef, std::abs(U_dE2(m, l, k, j)));
-                }
-            }
-
-            if (max_coef < 1.0e-16 or ij_r12(this->prec / max_coef, rho, orbitals[j], orbitals[l], g_jl)) {
-                // MSG_INFO("Skipped orbital pair (" << j << ", " << l << ")");
-                num_skipped++;
-                continue;
-            }
-
-            for (int k = 0; k < L; k++) {
-                // state = g_jl * Phi[k]
-                Orbital state;
-                mrcpp::multiply(state, g_jl, orbitals[k], this->prec);
-
-                for (int m = 0; m < L; m++) {
-                    ComplexDouble denom;
-                    if (std::abs(one_rdm(m, m)) > threshold)
-                        denom = one_rdm(m, m);
-                    else if (std::abs(lag_coeff(m, m)) > threshold)
-                        denom = lag_coeff(m, m);
-                    else
-                        continue; // both below threshold, skip
-
-                    ComplexDouble u = U_dE2(m, j, k, l);
-                    if (l != j) u += U_dE2(m, l, k, j);
-
-                    new_Phi[m].add(coeff(2.0 * u / denom), state);
-                }
-            }
-        }
-    }
-
-    MSG_INFO("Skipped " << num_skipped << " orbital pairs");
+    lagrangian::update_two_body(this->prec, this->threshold, this->real_orbitals, *this->orbitals, *S.get_one_rdm(), *S.get_lagrange_multipliers(), *S.get_U_dE2(), new_Phi);
 }
 
 /** @brief Pretty printing of orbitals with energies and occupancies
