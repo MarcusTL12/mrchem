@@ -27,6 +27,7 @@
 
 #include <MRCPP/Parallel>
 #include <MRCPP/Printer>
+#include <MRCPP/Timer>
 
 #include "qmfunctions/Orbital.h"
 #include "qmfunctions/density_utils.h"
@@ -129,12 +130,13 @@ void update_two_body_distributed(double prec, double threshold, bool real_orbita
     }
     mpi_utils::bcast(use_pair);
     mpi_utils::bcast(max_u);
-    std::vector<std::pair<int, int>> my_pairs; // round-robin over the pair list
+    struct MyPair { int j, l, ip; };
+    std::vector<MyPair> my_pairs; // round-robin over the pair list
     int ip = 0;
     for (int j = 0; j < L; j++)
         for (int l = j; l < L; l++)
             if (use_pair(j * L + l)) {
-                if (ip % P == me) my_pairs.emplace_back(j, l);
+                if (ip % P == me) my_pairs.push_back({j, l, ip});
                 ip++;
             }
 
@@ -154,8 +156,10 @@ void update_two_body_distributed(double prec, double threshold, bool real_orbita
     // 2. own pair potentials and accumulation of the partial sums for every target m
     std::vector<Orbital> Acc(L);
     int num_skipped = 0;
+    DoubleVector pair_time = DoubleVector::Zero(ip); // seconds per pair on its owner (diagnostics)
     for (auto &pr : my_pairs) {
-        const int j = pr.first, l = pr.second;
+        const int j = pr.j, l = pr.l;
+        mrcpp::Timer t_pair;
         Orbital g_jl = Phi_loc[j].paramCopy(true);
         if (ij_r12(prec / max_u(j * L + l), rho, Phi_loc[j], Phi_loc[l], g_jl)) {
             num_skipped++;
@@ -188,9 +192,22 @@ void update_two_body_distributed(double prec, double threshold, bool real_orbita
             }
         }
         g_jl.free();
+        pair_time(pr.ip) = t_pair.elapsed();
     }
     for (int i = 0; i < L; i++)
         if (not mrcpp::mpi::my_func(i)) Phi_loc[i].free();
+    mrcpp::mpi::allreduce_vector(pair_time, mrcpp::mpi::comm_wrk); // collective
+    {
+        DoubleVector rank_time = DoubleVector::Zero(P);
+        for (auto &q : my_pairs) rank_time(me) += pair_time(q.ip);
+        // the per-rank sums of all ranks follow from the pair times and the (known) round-robin assignment
+        for (int r = 0; r < P; r++) {
+            rank_time(r) = 0.0;
+            for (int q = r; q < pair_time.size(); q += P) rank_time(r) += pair_time(q);
+        }
+        println(3, "2e pair loop: " << pair_time.size() << " pairs on " << P << " workers, time per worker min/mean/max = " << rank_time.minCoeff() << " / " << rank_time.mean() << " / " << rank_time.maxCoeff() << " s");
+        if (mrcpp::Printer::getPrintLevel() >= 4) println(4, "2e pair times: " << pair_time.transpose());
+    }
 
     // 3. which worker has a partial sum for which target (from the actual results; one collective)
     IntVector has_part = IntVector::Zero(L * P);
