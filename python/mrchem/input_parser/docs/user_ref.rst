@@ -1015,6 +1015,15 @@ User input reference
   
     **Default** ``False``
   
+   :update_block_size: MPI only: number of orbitals updated per block in the two-electron part of the orbital update. Smaller blocks need less memory per rank but more synchronisation. 0 chooses a size from the number of orbitals and workers. 
+  
+    **Type** ``int``
+  
+    **Default** ``0``
+  
+    **Predicates**
+      - ``value >= 0``
+  
    :kain: Length of kain history 
   
     **Type** ``int``

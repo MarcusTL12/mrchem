@@ -331,6 +331,7 @@ def write_lag_solver(user_dict):
         "checkpoint": lag_dict["write_checkpoint"],
         "localize": lag_dict["localize"],
         "kain": lag_dict["kain"],
+        "update_block_size": lag_dict["update_block_size"],
         "prec": prec,
     }
 

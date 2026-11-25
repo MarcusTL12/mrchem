@@ -45,11 +45,20 @@ namespace lagrangian {
  * @param one_rdm, lag_coeff: 1-RDM and Lagrange multipliers in the new basis
  * @param U_dE2: U_dE2(m,j,k,l) = sum_i U(m,i) two_rdm(i,j,k,l), m in the new basis
  * @param new_Phi: in/out, the term is accumulated into it
+ * @param block_size: number of target orbitals per block in the distributed path (<= 0: default from the number of workers)
  *
  * Accumulates 2 sum_{jkl} U_dE2(m,j,k,l) / denom(m) * poisson(phi_j^* phi_l) phi_k into new_Phi[m].
  * Uses the triangular loop l >= j with the symmetric partner (l,j) folded in.
  */
-void update_two_body(double prec, double threshold, bool real_orbitals, OrbitalVector &orbitals, const ComplexMatrix &one_rdm, const ComplexMatrix &lag_coeff, const ComplexTensorR4 &U_dE2, OrbitalVector &new_Phi);
+void update_two_body(double prec,
+                     double threshold,
+                     bool real_orbitals,
+                     OrbitalVector &orbitals,
+                     const ComplexMatrix &one_rdm,
+                     const ComplexMatrix &lag_coeff,
+                     const ComplexTensorR4 &U_dE2,
+                     OrbitalVector &new_Phi,
+                     int block_size = 0);
 
 } // namespace lagrangian
 } // namespace mrchem

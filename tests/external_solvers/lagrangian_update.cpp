@@ -122,6 +122,11 @@ TEST_CASE("Lagrangian two-body update vs serial oracle", "[lagrangian_update]") 
     OrbitalVector test = start();
     oracle_two_body(prec, 1.0e-10, true, Phi, one_rdm, lag, U_dE2, ref);
     lagrangian::update_two_body(prec, 1.0e-10, true, Phi, one_rdm, lag, U_dE2, test);
+    // the block size only changes the grouping of the work: B = 1 and B = L must agree to rounding
+    OrbitalVector test_b1 = start();
+    OrbitalVector test_bL = start();
+    lagrangian::update_two_body(prec, 1.0e-10, true, Phi, one_rdm, lag, U_dE2, test_b1, 1);
+    lagrangian::update_two_body(prec, 1.0e-10, true, Phi, one_rdm, lag, U_dE2, test_bL, L);
 
     for (int m = 0; m < L; m++) {
         // distributed path: only the owner of m receives the sum
@@ -129,8 +134,14 @@ TEST_CASE("Lagrangian two-body update vs serial oracle", "[lagrangian_update]") 
         Orbital diff;
         mrcpp::add(diff, 1.0, ref[m], -1.0, test[m], -1.0);
         INFO("orbital " << m);
-        CHECK(diff.norm() < 1.0e-10);
+        // the oracle keeps today's loop order (products first); the update combines the orbitals first: precision-level difference
+        CHECK(diff.norm() < 2.0 * prec);
         CHECK(ref[m].norm() > 1.0e-3);
+        Orbital d1, dL;
+        mrcpp::add(d1, 1.0, test[m], -1.0, test_b1[m], -1.0);
+        mrcpp::add(dL, 1.0, test[m], -1.0, test_bL[m], -1.0);
+        CHECK(d1.norm() < 1.0e-9);
+        CHECK(dL.norm() < 1.0e-9);
     }
 }
 

@@ -1163,6 +1163,7 @@ json driver::lag::run(const json &json_lag, Molecule &mol) {
     auto force_complex = json_lag["lag_solver"]["force_complex"];
     auto localize = json_lag["lag_solver"]["localize"];
     auto kain = json_lag["lag_solver"]["kain"];
+    int update_block_size = json_lag["lag_solver"].value("update_block_size", 0);
 
     LagrangianSolver solver(prec);
     solver.setMaxIterations(max_iter);
@@ -1170,6 +1171,7 @@ json driver::lag::run(const json &json_lag, Molecule &mol) {
     solver.setThreshold(-1.0, energy_thrs); // no orbital threshold: convergence only on the energy
     solver.setLocalize(localize);
     solver.setHistory(kain);
+    solver.set_update_block_size(update_block_size);
 
     json_out["lag_solver"] = solver.optimize(mol, F, dmrg_solver);
     json_out["success"] = json_out["lag_solver"]["converged"];

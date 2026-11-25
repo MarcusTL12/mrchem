@@ -309,7 +309,7 @@ void LagrangianSolver::orbital_update_one_body(FockBuilder &F, ChemTensorSolver 
 }
 
 void LagrangianSolver::orbital_update_two_body(FockBuilder &F, ChemTensorSolver &S, OrbitalVector &new_Phi) {
-    lagrangian::update_two_body(this->prec, this->threshold, this->real_orbitals, *this->orbitals, *S.get_one_rdm(), *S.get_lagrange_multipliers(), *S.get_U_dE2(), new_Phi);
+    lagrangian::update_two_body(this->prec, this->threshold, this->real_orbitals, *this->orbitals, *S.get_one_rdm(), *S.get_lagrange_multipliers(), *S.get_U_dE2(), new_Phi, this->update_block_size);
 }
 
 /** @brief Pretty printing of orbitals with energies and occupancies

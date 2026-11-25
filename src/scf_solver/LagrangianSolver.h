@@ -57,6 +57,8 @@ public:
 
     OrbitalVector get_orbitals() { return *this->orbitals; };
     void set_force_complex(bool force_complex) { this->force_complex = force_complex; }
+    /** @brief Number of target orbitals per block in the distributed two-electron update (<= 0: automatic) */
+    void set_update_block_size(int block_size) { this->update_block_size = block_size; }
     void setLocalize(bool localize) { this->localize = localize; }
 
     nlohmann::json optimize(Molecule &mol, FockBuilder &F, ChemTensorSolver &S);
@@ -66,6 +68,7 @@ protected:
     double prec{}; ///< MW precision (world_prec)
     double threshold{};
     bool force_complex{false}; ///< use complex orbitals even when real ones are possible
+    int update_block_size{0};  ///< targets per block in the distributed two-electron update (0: automatic)
     bool real_orbitals{true};  ///< current mode: real or complex orbitals
     bool localize{false};      ///< Whether to localize orbitals before starting scf
     PoissonOperator_p P_p{};

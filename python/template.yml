@@ -995,6 +995,15 @@ sections:
         default: false
         docstring: |
           Localize active orbitals before starting scf
+      - name: update_block_size
+        type: int
+        default: 0
+        predicates:
+          - value >= 0
+        docstring: |
+          MPI only: number of orbitals updated per block in the two-electron part of the orbital update.
+          Smaller blocks need less memory per rank but more synchronisation. 0 chooses a size from the
+          number of orbitals and workers.
       - name: kain
         type: int
         default: 0
