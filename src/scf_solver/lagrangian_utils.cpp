@@ -40,7 +40,15 @@ namespace lagrangian {
 namespace {
 
 /** @brief Serial path (one worker): all orbitals are local, accumulation directly into new_Phi (today's loop and order) */
-void update_two_body_serial(double prec, double threshold, bool real_orbitals, OrbitalVector &orbitals, const ComplexMatrix &one_rdm, const ComplexMatrix &lag_coeff, const ComplexTensorR4 &U_dE2, Density &rho, OrbitalVector &new_Phi) {
+void update_two_body_serial(double prec,
+                            double threshold,
+                            bool real_orbitals,
+                            OrbitalVector &orbitals,
+                            const ComplexMatrix &one_rdm,
+                            const ComplexMatrix &lag_coeff,
+                            const ComplexTensorR4 &U_dE2,
+                            Density &rho,
+                            OrbitalVector &new_Phi) {
     const int L = orbitals.size();
     auto coeff_ = [real_orbitals](ComplexDouble c) { return real_orbitals ? ComplexDouble(c.real(), 0.0) : c; };
 
@@ -109,7 +117,15 @@ void update_two_body_serial(double prec, double threshold, bool real_orbitals, O
  * the pairs (j<=l) are distributed round-robin; the partial sums for every target m go through the bank and are added up
  * by the owner of m in a fixed rank order (reproducible for a given number of ranks).
  */
-void update_two_body_distributed(double prec, double threshold, bool real_orbitals, OrbitalVector &orbitals, const ComplexMatrix &one_rdm, const ComplexMatrix &lag_coeff, const ComplexTensorR4 &U_dE2, Density &rho, OrbitalVector &new_Phi) {
+void update_two_body_distributed(double prec,
+                                 double threshold,
+                                 bool real_orbitals,
+                                 OrbitalVector &orbitals,
+                                 const ComplexMatrix &one_rdm,
+                                 const ComplexMatrix &lag_coeff,
+                                 const ComplexTensorR4 &U_dE2,
+                                 Density &rho,
+                                 OrbitalVector &new_Phi) {
     const int L = orbitals.size();
     const int me = mrcpp::mpi::wrk_rank;
     const int P = mrcpp::mpi::wrk_size;
@@ -130,15 +146,39 @@ void update_two_body_distributed(double prec, double threshold, bool real_orbita
     }
     mpi_utils::bcast(use_pair);
     mpi_utils::bcast(max_u);
-    struct MyPair { int j, l, ip; };
-    std::vector<MyPair> my_pairs; // round-robin over the pair list
+    struct MyPair {
+        int j, l, ip;
+    };
+    std::vector<MyPair> my_pairs;                  // round-robin over the pair list
+    std::vector<std::vector<MyPair>> all_pairs(P); // the same list for every rank (replicated data)
     int ip = 0;
     for (int j = 0; j < L; j++)
         for (int l = j; l < L; l++)
             if (use_pair(j * L + l)) {
-                if (ip % P == me) my_pairs.push_back({j, l, ip});
+                all_pairs[ip % P].push_back({j, l, ip});
                 ip++;
             }
+    my_pairs = all_pairs[me];
+
+    // 0b. U_dE2 lives on the master only: each worker receives the slices of its own pairs,
+    //     2*L*L numbers per pair: u1(m,k) = U_dE2(m,j,k,l) and u2(m,k) = U_dE2(m,l,k,j), index m + L*k
+    const int slice = 2 * L * L;
+    IntVector counts(P);
+    for (int r = 0; r < P; r++) counts(r) = slice * static_cast<int>(all_pairs[r].size());
+    std::vector<ComplexDouble> send;
+    if (me == 0) {
+        send.reserve(static_cast<size_t>(counts.sum()));
+        for (int r = 0; r < P; r++)
+            for (auto &pr : all_pairs[r]) {
+                for (int k = 0; k < L; k++)
+                    for (int m = 0; m < L; m++) send.push_back(U_dE2(m, pr.j, k, pr.l));
+                for (int k = 0; k < L; k++)
+                    for (int m = 0; m < L; m++) send.push_back(U_dE2(m, pr.l, k, pr.j));
+            }
+    }
+    std::vector<ComplexDouble> my_U;
+    mpi_utils::scatterv(send, counts, my_U);
+    send = std::vector<ComplexDouble>(); // free the master's copy
 
     // 1. all orbitals on every worker (own ones are local, the others come from the bank)
     mrcpp::BankAccount PhiBank;
@@ -157,8 +197,11 @@ void update_two_body_distributed(double prec, double threshold, bool real_orbita
     std::vector<Orbital> Acc(L);
     int num_skipped = 0;
     DoubleVector pair_time = DoubleVector::Zero(ip); // seconds per pair on its owner (diagnostics)
-    for (auto &pr : my_pairs) {
+    for (size_t ipair = 0; ipair < my_pairs.size(); ipair++) {
+        auto &pr = my_pairs[ipair];
         const int j = pr.j, l = pr.l;
+        const ComplexDouble *u1 = my_U.data() + ipair * slice;
+        const ComplexDouble *u2 = u1 + L * L;
         mrcpp::Timer t_pair;
         Orbital g_jl = Phi_loc[j].paramCopy(true);
         if (ij_r12(prec / max_u(j * L + l), rho, Phi_loc[j], Phi_loc[l], g_jl)) {
@@ -178,16 +221,16 @@ void update_two_body_distributed(double prec, double threshold, bool real_orbita
                     denom = lag_coeff(m, m);
                 else
                     continue;
-                ComplexDouble u = U_dE2(m, j, k, l);
+                ComplexDouble u = u1[m + L * k];
                 if (l == j) {
                     Acc[m].add(coeff_(2.0 * u / denom), state);
                 } else if (real_orbitals) {
-                    u += U_dE2(m, l, k, j); // real orbitals: g_lj = g_jl, one shared product
+                    u += u2[m + L * k]; // real orbitals: g_lj = g_jl, one shared product
                     Acc[m].add(coeff_(2.0 * u / denom), state);
                 } else {
                     // complex orbitals: g_lj = conj(g_jl), so the (l,j) term needs conj(g_jl) * Phi[k]
                     Acc[m].add(coeff_(2.0 * u / denom), state);
-                    Acc[m].add(coeff_(2.0 * U_dE2(m, l, k, j) / denom), state_conj);
+                    Acc[m].add(coeff_(2.0 * u2[m + L * k] / denom), state_conj);
                 }
             }
         }
@@ -202,7 +245,9 @@ void update_two_body_distributed(double prec, double threshold, bool real_orbita
         DoubleVector rank_time = DoubleVector::Zero(P);
         for (int r = 0; r < P; r++)
             for (int q = r; q < pair_time.size(); q += P) rank_time(r) += pair_time(q);
-        println(3, "2e pair loop: " << pair_time.size() << " pairs on " << P << " workers, time per worker min/mean/max = " << rank_time.minCoeff() << " / " << rank_time.mean() << " / " << rank_time.maxCoeff() << " s");
+        println(3,
+                "2e pair loop: " << pair_time.size() << " pairs on " << P << " workers, time per worker min/mean/max = " << rank_time.minCoeff() << " / " << rank_time.mean() << " / "
+                                 << rank_time.maxCoeff() << " s");
         if (mrcpp::Printer::getPrintLevel() >= 4) println(4, "2e pair times: " << pair_time.transpose());
     }
 
@@ -242,7 +287,14 @@ void update_two_body_distributed(double prec, double threshold, bool real_orbita
 
 } // namespace
 
-void update_two_body(double prec, double threshold, bool real_orbitals, OrbitalVector &orbitals, const ComplexMatrix &one_rdm, const ComplexMatrix &lag_coeff, const ComplexTensorR4 &U_dE2, OrbitalVector &new_Phi) {
+void update_two_body(double prec,
+                     double threshold,
+                     bool real_orbitals,
+                     OrbitalVector &orbitals,
+                     const ComplexMatrix &one_rdm,
+                     const ComplexMatrix &lag_coeff,
+                     const ComplexTensorR4 &U_dE2,
+                     OrbitalVector &new_Phi) {
     // Computing total density to use for screening potential computations (collective)
     Density rho;
     density::compute(prec, rho, orbitals, DensityType::Total);

@@ -49,6 +49,13 @@ void bcast(DoubleVector &x, MPI_Comm comm = mrcpp::mpi::comm_wrk);
 void bcast(ComplexMatrix &x, MPI_Comm comm = mrcpp::mpi::comm_wrk);
 void bcast(ComplexTensorR4 &x, MPI_Comm comm = mrcpp::mpi::comm_wrk);
 
+/** @brief Scatter complex numbers from the master: worker r receives counts(r) numbers.
+ *
+ * `send` is only read on the master (concatenated in rank order, counts.sum() entries); `recv` is resized on every worker.
+ * `counts` must be identical on all workers.
+ */
+void scatterv(const std::vector<ComplexDouble> &send, const IntVector &counts, std::vector<ComplexDouble> &recv, MPI_Comm comm = mrcpp::mpi::comm_wrk);
+
 /** @brief Logical OR of `x` over all workers; the result is returned on every worker. */
 bool allreduce_or(bool x, MPI_Comm comm = mrcpp::mpi::comm_wrk);
 

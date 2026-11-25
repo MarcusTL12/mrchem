@@ -105,13 +105,13 @@ void ExternalSolver::prepare_orbital_update() {
         if (!this->lag_coeff) this->lag_coeff = std::make_shared<ComplexMatrix>();
         if (!this->basis_change) this->basis_change = std::make_shared<ComplexMatrix>();
         if (!this->helm_coeff) this->helm_coeff = std::make_shared<DoubleVector>();
+        // U_dE2 (L^4) stays on the master; the pair update scatters the slices each worker needs
         if (!this->U_dE2) this->U_dE2 = std::make_shared<ComplexTensorR4>();
     }
     mpi_utils::bcast(*this->one_rdm);
     mpi_utils::bcast(*this->lag_coeff);
     mpi_utils::bcast(*this->basis_change);
     mpi_utils::bcast(*this->helm_coeff);
-    mpi_utils::bcast(*this->U_dE2); // full L^4 (transitional, S8 sends each worker only its slices)
 }
 
 void ExternalSolver::calculate_lagrange_multipliers(){

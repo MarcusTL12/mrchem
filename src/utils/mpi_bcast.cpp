@@ -77,6 +77,23 @@ void bcast(ComplexTensorR4 &x, MPI_Comm comm) {
     if (x.size() > 0) MPI_Bcast(reinterpret_cast<double *>(x.data()), 2 * static_cast<int>(x.size()), MPI_DOUBLE, 0, comm);
 }
 
+void scatterv(const std::vector<ComplexDouble> &send, const IntVector &counts, std::vector<ComplexDouble> &recv, MPI_Comm comm) {
+    int size = 0, rank = 0;
+    MPI_Comm_size(comm, &size);
+    MPI_Comm_rank(comm, &rank);
+    // complex numbers are sent as pairs of doubles
+    std::vector<int> cnt(size), dsp(size);
+    int off = 0;
+    for (int r = 0; r < size; r++) {
+        cnt[r] = 2 * counts(r);
+        dsp[r] = off;
+        off += cnt[r];
+    }
+    recv.assign(counts(rank), ComplexDouble(0.0, 0.0));
+    const double *sp = (rank == 0 and not send.empty()) ? reinterpret_cast<const double *>(send.data()) : nullptr;
+    MPI_Scatterv(sp, cnt.data(), dsp.data(), MPI_DOUBLE, reinterpret_cast<double *>(recv.data()), cnt[rank], MPI_DOUBLE, 0, comm);
+}
+
 bool allreduce_or(bool x, MPI_Comm comm) {
     int in = x ? 1 : 0, out = 0;
     MPI_Allreduce(&in, &out, 1, MPI_INT, MPI_LOR, comm);
@@ -92,6 +109,10 @@ void bcast(IntVector &, MPI_Comm) {}
 void bcast(DoubleVector &, MPI_Comm) {}
 void bcast(ComplexMatrix &, MPI_Comm) {}
 void bcast(ComplexTensorR4 &, MPI_Comm) {}
+void scatterv(const std::vector<ComplexDouble> &send, const IntVector &counts, std::vector<ComplexDouble> &recv, MPI_Comm) {
+    recv = send;
+    (void)counts;
+}
 bool allreduce_or(bool x, MPI_Comm) {
     return x;
 }

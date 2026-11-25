@@ -88,6 +88,20 @@ TEST_CASE("mpi_utils::bcast and allreduce_or", "[mpi_bcast]") {
         REQUIRE(t(1, 2, 0, 1) == ComplexDouble(4.0, -2.5));
         REQUIRE(t(0, 0, 0, 0) == ComplexDouble(0.0, 0.0));
     }
+    SECTION("scatterv") {
+        const int P = mrcpp::mpi::wrk_size;
+        const int me = mrcpp::mpi::wrk_rank;
+        IntVector counts(P);
+        for (int r = 0; r < P; r++) counts(r) = r + 1; // different sizes per rank
+        std::vector<ComplexDouble> send, recv;
+        if (master) {
+            for (int r = 0; r < P; r++)
+                for (int i = 0; i <= r; i++) send.push_back(ComplexDouble(10.0 * r + i, -1.0 * r));
+        }
+        mpi_utils::scatterv(send, counts, recv);
+        REQUIRE(recv.size() == static_cast<size_t>(me + 1));
+        for (int i = 0; i <= me; i++) REQUIRE(recv[i] == ComplexDouble(10.0 * me + i, -1.0 * me));
+    }
     SECTION("allreduce_or") {
         const bool only_last = (mrcpp::mpi::wrk_rank == mrcpp::mpi::wrk_size - 1);
         REQUIRE(mpi_utils::allreduce_or(only_last));
