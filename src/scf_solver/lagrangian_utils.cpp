@@ -198,13 +198,10 @@ void update_two_body_distributed(double prec, double threshold, bool real_orbita
         if (not mrcpp::mpi::my_func(i)) Phi_loc[i].free();
     mrcpp::mpi::allreduce_vector(pair_time, mrcpp::mpi::comm_wrk); // collective
     {
-        DoubleVector rank_time = DoubleVector::Zero(P);
-        for (auto &q : my_pairs) rank_time(me) += pair_time(q.ip);
         // the per-rank sums of all ranks follow from the pair times and the (known) round-robin assignment
-        for (int r = 0; r < P; r++) {
-            rank_time(r) = 0.0;
+        DoubleVector rank_time = DoubleVector::Zero(P);
+        for (int r = 0; r < P; r++)
             for (int q = r; q < pair_time.size(); q += P) rank_time(r) += pair_time(q);
-        }
         println(3, "2e pair loop: " << pair_time.size() << " pairs on " << P << " workers, time per worker min/mean/max = " << rank_time.minCoeff() << " / " << rank_time.mean() << " / " << rank_time.maxCoeff() << " s");
         if (mrcpp::Printer::getPrintLevel() >= 4) println(4, "2e pair times: " << pair_time.transpose());
     }
@@ -238,7 +235,9 @@ void update_two_body_distributed(double prec, double threshold, bool real_orbita
         Acc[m].free();
     }
     // Single block: the bank accounts are freed by their destructors (clear() is only needed to free memory between blocks, S10)
-    if (me == 0) MSG_INFO("Skipped " << num_skipped << " orbital pairs on the master");
+    IntVector skipped = IntVector::Constant(1, num_skipped);
+    mrcpp::mpi::allreduce_vector(skipped, mrcpp::mpi::comm_wrk); // collective
+    if (me == 0) MSG_INFO("Skipped " << skipped(0) << " orbital pairs");
 }
 
 } // namespace
