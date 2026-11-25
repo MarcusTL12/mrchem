@@ -56,6 +56,12 @@ void bcast(ComplexTensorR4 &x, MPI_Comm comm = mrcpp::mpi::comm_wrk);
  */
 void scatterv(const std::vector<ComplexDouble> &send, const IntVector &counts, std::vector<ComplexDouble> &recv, MPI_Comm comm = mrcpp::mpi::comm_wrk);
 
+/** @brief Gather complex numbers on the master: `recv` is the concatenation (rank order) of all `send`, valid on the master only.
+ *
+ * `send` may have a different size on every worker (the sizes are exchanged first).
+ */
+void gatherv(const std::vector<ComplexDouble> &send, std::vector<ComplexDouble> &recv, MPI_Comm comm = mrcpp::mpi::comm_wrk);
+
 /** @brief Logical OR of `x` over all workers; the result is returned on every worker. */
 bool allreduce_or(bool x, MPI_Comm comm = mrcpp::mpi::comm_wrk);
 

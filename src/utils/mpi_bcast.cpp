@@ -25,6 +25,10 @@
 
 #include "mpi_bcast.h"
 
+#include <limits>
+
+#include <MRCPP/Printer>
+
 namespace mrchem {
 namespace mpi_utils {
 
@@ -94,6 +98,27 @@ void scatterv(const std::vector<ComplexDouble> &send, const IntVector &counts, s
     MPI_Scatterv(sp, cnt.data(), dsp.data(), MPI_DOUBLE, reinterpret_cast<double *>(recv.data()), cnt[rank], MPI_DOUBLE, 0, comm);
 }
 
+void gatherv(const std::vector<ComplexDouble> &send, std::vector<ComplexDouble> &recv, MPI_Comm comm) {
+    int size = 0, rank = 0;
+    MPI_Comm_size(comm, &size);
+    MPI_Comm_rank(comm, &rank);
+    // complex numbers are sent as pairs of doubles
+    int mycount = 2 * static_cast<int>(send.size());
+    std::vector<int> cnt(size), dsp(size);
+    MPI_Allgather(&mycount, 1, MPI_INT, cnt.data(), 1, MPI_INT, comm);
+    long long total = 0;
+    for (int r = 0; r < size; r++) {
+        dsp[r] = static_cast<int>(total);
+        total += cnt[r];
+    }
+    if (total > std::numeric_limits<int>::max()) MSG_ABORT("gatherv: message too large for a single MPI_Gatherv");
+    recv.clear();
+    if (rank == 0) recv.assign(static_cast<size_t>(total / 2), ComplexDouble(0.0, 0.0));
+    const double *sp = send.empty() ? nullptr : reinterpret_cast<const double *>(send.data());
+    double *rp = (rank == 0 and total > 0) ? reinterpret_cast<double *>(recv.data()) : nullptr;
+    MPI_Gatherv(sp, mycount, MPI_DOUBLE, rp, cnt.data(), dsp.data(), MPI_DOUBLE, 0, comm);
+}
+
 bool allreduce_or(bool x, MPI_Comm comm) {
     int in = x ? 1 : 0, out = 0;
     MPI_Allreduce(&in, &out, 1, MPI_INT, MPI_LOR, comm);
@@ -112,6 +137,9 @@ void bcast(ComplexTensorR4 &, MPI_Comm) {}
 void scatterv(const std::vector<ComplexDouble> &send, const IntVector &counts, std::vector<ComplexDouble> &recv, MPI_Comm) {
     recv = send;
     (void)counts;
+}
+void gatherv(const std::vector<ComplexDouble> &send, std::vector<ComplexDouble> &recv, MPI_Comm) {
+    recv = send;
 }
 bool allreduce_or(bool x, MPI_Comm) {
     return x;

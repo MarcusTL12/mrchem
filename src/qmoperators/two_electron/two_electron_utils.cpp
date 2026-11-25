@@ -26,6 +26,7 @@
 #include "two_electron_utils.h"
 #include "qmfunctions/density_utils.h"
 #include <MRCPP/Parallel>
+#include "utils/mpi_bcast.h"
 #include "MRCPP/MWOperators"
 #include "MRCPP/Printer"
 #include "MRCPP/Timer"
@@ -41,20 +42,42 @@ Eigen::Tensor<std::complex<double>, 4> calc_2elintegrals(double prec, OrbitalVec
     Timer t_tot, t_snd(false), t_rho(false), t_ovr(false), t_calc(false), t_add(false), t_get(false);
 
     mrcpp::BankAccount PhiBank; // to put the orbitals
-    mrcpp::BankAccount VijBank; // to put the ij/r12 potentials
 
     int N = Phi.size();
     double precf = prec / (10*std::sqrt(1 * Phi.size()));
     double prec_m2 = precf / 100; // second multiplication
 
-    std::vector<mrcpp::CompFunction<3>> Vij_vec;
-    if (mrcpp::mpi::bank_size <= 0) {
-        Vij_vec.resize(N*(N+1)/2);
-    } else {
-        for (size_t i = 0; i < Phi.size(); i++) {
+    // all orbitals on every worker (own ones are local, the others come from the bank); no bank: Phi itself
+    std::vector<Orbital> Phi_loc(N);
+    if (mrcpp::mpi::bank_size > 0) {
+        for (int i = 0; i < N; i++)
             if (mrcpp::mpi::my_func(i)) PhiBank.put_func(i, Phi[i]);
-        }
     }
+    t_get.resume();
+    for (int i = 0; i < N; i++) {
+        if (mrcpp::mpi::bank_size <= 0 or mrcpp::mpi::my_func(i))
+            Phi_loc[i] = Phi[i];
+        else
+            PhiBank.get_func(i, Phi_loc[i], 1);
+    }
+    t_get.stop();
+
+    // compute-and-contract: right after V_ij is computed, kl_Vij(k,l) = <k| l V_ij> is made and V_ij is freed.
+    // One record per pair (i>=j): [i*N+j, kl_Vij(k + N*l) for all k,l], gathered on the master at the end.
+    std::vector<ComplexDouble> records;
+    auto contract = [&](int i, int j, Orbital &Vij) {
+        const size_t start = records.size();
+        records.resize(start + 1 + static_cast<size_t>(N) * N);
+        records[start] = ComplexDouble(static_cast<double>(i * N + j), 0.0);
+        for (int l = 0; l < N; l++) {
+            Orbital lVij = Phi_loc[l].paramCopy(true);
+            t_ovr.resume();
+            mrcpp::multiply(lVij, Phi_loc[l], Vij, prec_m2, true, true);
+            for (int k = 0; k < N; k++) records[start + 1 + k + static_cast<size_t>(N) * l] = mrcpp::dot(Phi_loc[k], lVij);
+            t_ovr.stop();
+            lVij.free();
+        }
+    };
 
     // first we compute density to be used so we know were the orbitals are. This
     // is to avoid computing the potential at positions were there are no orbitals.
@@ -71,17 +94,9 @@ Eigen::Tensor<std::complex<double>, 4> calc_2elintegrals(double prec, OrbitalVec
         if (!mrcpp::mpi::my_func(i)) continue;
         Orbital Vij = phi_i.paramCopy(true);
         t_calc.resume();
-        ij_r12(precf, rho, phi_i,  phi_i, Vij);
+        bool skipped = ij_r12(precf, rho, phi_i, phi_i, Vij);
         t_calc.stop();
-        if (mrcpp::mpi::bank_size > 0) {
-            // store Vij
-            t_snd.resume();
-            VijBank.put_func(i*(i+1)/2+i, Vij);
-            // if (Vij.norm() > prec)VijBank.put_func(i*(i+1)/2+i, Vij);
-            t_snd.stop();
-        } else {
-            mrcpp::deep_copy(Vij_vec[i*(i+1)/2+i], Vij);
-        }
+        if (not skipped) contract(i, i, Vij);
         Vij.free();
     }
     t_diag.stop();
@@ -154,98 +169,55 @@ Eigen::Tensor<std::complex<double>, 4> calc_2elintegrals(double prec, OrbitalVec
     assert(task <= ntasksmax);
     int ntasks = task;
 
-    // store Int(phi_i^dag*phi_j/|r-r'|) potentials in Bank
+    // compute the Int(phi_i^dag*phi_j/|r-r'|) potentials and contract them at once
     mrcpp::TaskManager tasksMaster(ntasks);
     while (true) {
         task = tasksMaster.next_task();
         if (task < 0) break;
-        // we fetch all required i (but only one j at a time)
-        std::vector<Orbital> iorb_vec;
-        for (size_t i = 0; i < itasks[task].size(); i++) {
-            int iorb = itasks[task][i];
-            Orbital phi_i;
-            t_get.resume();
-            if (mrcpp::mpi::bank_size > 0) {
-                PhiBank.get_func(iorb, phi_i, 1); // fetch also own orbitals (simpler for clean up, and they are few)
-                iorb_vec.push_back(phi_i);
-            } else {
-                iorb_vec.push_back(Phi[iorb]);
-            }
-            t_get.stop();
-        }
-
         for (size_t j = 0; j < jtasks[task].size(); j++) {
             int jorb = jtasks[task][j];
-            Orbital phi_j;
-            t_get.resume();
-            if (mrcpp::mpi::bank_size > 0) {
-                PhiBank.get_func(jorb, phi_j, 1);
-            } else
-                phi_j = Phi[jorb];
-            t_get.stop();
-
-            for (size_t i = 0; i < iorb_vec.size(); i++) {
+            for (size_t i = 0; i < itasks[task].size(); i++) {
                 int iorb = itasks[task][i];
-                Orbital &phi_i = iorb_vec[i];
-                Orbital Vij = phi_i.paramCopy(true);
+                Orbital Vij = Phi_loc[iorb].paramCopy(true);
                 t_calc.resume();
                 // the potential is stored as V_ij = P[phi_i^dagger * phi_j] with i >= j, but iorb < jorb can happen
                 // in the off-diagonal blocks: swap the orbitals in that case (V_ji = conj(V_ij) for complex orbitals)
+                bool skipped;
                 if (iorb >= jorb)
-                    ij_r12(precf, rho, phi_i, phi_j, Vij);
+                    skipped = ij_r12(precf, rho, Phi_loc[iorb], Phi_loc[jorb], Vij);
                 else
-                    ij_r12(precf, rho, phi_j, phi_i, Vij);
+                    skipped = ij_r12(precf, rho, Phi_loc[jorb], Phi_loc[iorb], Vij);
                 t_calc.stop();
-                int ij = std::max(iorb,jorb)*(std::max(iorb,jorb)+1)/2 + std::min(iorb,jorb);
-                if (mrcpp::mpi::bank_size > 0) {
-                    // store Vij
-                    t_snd.resume();
-                    VijBank.put_func(ij, Vij);
-                    t_snd.stop();
-                } else {
-                    mrcpp::deep_copy(Vij_vec[ij], Vij);
-                }
+                if (not skipped) contract(std::max(iorb, jorb), std::min(iorb, jorb), Vij);
                 Vij.free();
             }
         }
     }
 
     t_offd.stop();
-    Eigen::Tensor<std::complex<double>, 4> ikVjl(N,N,N,N);
-    // For each Vij, compute the overlap matrix <k| lVij>
-    long long totSizeVij = 0;
-    for (int i = 0; i < N; i ++) {
-        for (int j = 0; j <= i; j ++) {
-            Orbital Vij;
-            t_get.resume();
-            if (mrcpp::mpi::bank_size > 0) {
-                VijBank.get_func(i*(i+1)/2+j, Vij, 1); // note that it will wait if not yet ready
-            } else {
-                int ij = std::max(i,j)*(std::max(i,j)+1)/2 + std::min(i,j);
-                Vij = Vij_vec[ij];
-            }
-            totSizeVij += Vij.getSizeNodes(); // in kB
-            t_get.stop();
+    for (int i = 0; i < N; i++)
+        if (not (mrcpp::mpi::bank_size <= 0 or mrcpp::mpi::my_func(i))) Phi_loc[i].free();
 
-            //compute l*Vij for own orbitals only
-            OrbitalVector l_Vij;
-            for (auto &phi_l : Phi) {
-                Orbital lVij = phi_l.paramCopy(true);
-                if (mrcpp::mpi::my_func(phi_l)) {
-                    mrcpp::multiply(lVij, phi_l, Vij, prec_m2, true, true);
-                }
-                l_Vij.push_back(lVij);
-            }
-            t_ovr.resume();
-            ComplexMatrix kl_Vij = calc_overlap_matrix(Phi,l_Vij);
-            t_ovr.stop();
-            Vij.free();
-
-            for (int k = 0; k < N; k ++) {
-                for (int l = 0; l < N; l ++) {
-                    ikVjl(i,k,j,l) = kl_Vij(k,l);
+    // only the master holds the N^4 tensor
+    t_get.resume();
+    std::vector<ComplexDouble> all_records;
+    mpi_utils::gatherv(records, all_records); // collective
+    records = std::vector<ComplexDouble>();
+    t_get.stop();
+    Eigen::Tensor<std::complex<double>, 4> ikVjl;
+    if (mrcpp::mpi::wrk_rank == 0) {
+        ikVjl.resize(N, N, N, N);
+        ikVjl.setZero();
+        const size_t rec_size = 1 + static_cast<size_t>(N) * N;
+        for (size_t r = 0; r + rec_size <= all_records.size(); r += rec_size) {
+            const int ij = static_cast<int>(std::lround(all_records[r].real()));
+            const int i = ij / N, j = ij % N;
+            const ComplexDouble *kl_Vij = all_records.data() + r + 1; // kl_Vij(k,l) = kl_Vij[k + N*l]
+            for (int k = 0; k < N; k++) {
+                for (int l = 0; l < N; l++) {
+                    ikVjl(i, k, j, l) = kl_Vij[k + N * l];
                     // V_ji = conj(V_ij), so <k|l V_ji> = conj(<l|k V_ij>) (same as kl_Vij(k,l) for real orbitals)
-                    if (i != j) ikVjl(j,k,i,l) = std::conj(kl_Vij(l,k));
+                    if (i != j) ikVjl(j, k, i, l) = std::conj(kl_Vij[l + N * k]);
                 }
             }
         }
@@ -253,15 +225,14 @@ Eigen::Tensor<std::complex<double>, 4> calc_2elintegrals(double prec, OrbitalVec
     t_tot.stop();
 
     mrcpp::print::time(3, "Time making density", t_rho);
-    mrcpp::print::time(3, "Time receiving orbitals", t_get);
+    mrcpp::print::time(3, "Time receiving orbitals / gathering", t_get);
     mrcpp::print::time(3, "Time sending potentials", t_snd);
     mrcpp::print::time(3, "Time computing integrals", t_calc);
     mrcpp::print::separator(3, '-');
     mrcpp::print::time(3, "Time diagonal terms", t_diag);
     mrcpp::print::time(3, "Time off-diagonal terms", t_offd);
-    mrcpp::print::time(3, "Time making overlap matrix", t_ovr);
+    mrcpp::print::time(3, "Time making products and overlaps", t_ovr);
     mrcpp::print::time(3, "Time making two el integrals", t_tot);
-    mrcpp::print::value(3,"Total size all ij/r12 potentials", totSizeVij/1024.0, "(MB)",0,false);
     mrcpp::print::separator(3, '-');
 
     return ikVjl;

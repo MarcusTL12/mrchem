@@ -102,6 +102,19 @@ TEST_CASE("mpi_utils::bcast and allreduce_or", "[mpi_bcast]") {
         REQUIRE(recv.size() == static_cast<size_t>(me + 1));
         for (int i = 0; i <= me; i++) REQUIRE(recv[i] == ComplexDouble(10.0 * me + i, -1.0 * me));
     }
+    SECTION("gatherv") {
+        const int me = mrcpp::mpi::wrk_rank;
+        std::vector<ComplexDouble> send, recv;
+        for (int i = 0; i <= me; i++) send.push_back(ComplexDouble(10.0 * me + i, -1.0 * me));
+        if (me == mrcpp::mpi::wrk_size - 1) send.clear(); // an empty contribution
+        mpi_utils::gatherv(send, recv);
+        if (master) {
+            size_t pos = 0;
+            for (int r = 0; r < mrcpp::mpi::wrk_size - 1; r++)
+                for (int i = 0; i <= r; i++) REQUIRE(recv[pos++] == ComplexDouble(10.0 * r + i, -1.0 * r));
+            REQUIRE(recv.size() == pos);
+        }
+    }
     SECTION("allreduce_or") {
         const bool only_last = (mrcpp::mpi::wrk_rank == mrcpp::mpi::wrk_size - 1);
         REQUIRE(mpi_utils::allreduce_or(only_last));

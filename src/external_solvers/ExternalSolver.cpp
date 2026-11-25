@@ -69,8 +69,13 @@ void ExternalSolver::set_integrals(OrbitalVector &Phi) {
 
     // switch to the complex mode if the integrals are not real
     if (this->real) {
-        double max_imag = std::max(this->one_body_integrals->imag().cwiseAbs().maxCoeff(),
-                                   Eigen::Tensor<double, 0>(this->two_body_integrals->imag().abs().maximum())());
+        // the two-body integrals exist on the master only: it decides, all workers follow (collective)
+        double max_imag = 0.0;
+        if (mrcpp::mpi::wrk_rank == 0) {
+            max_imag = std::max(this->one_body_integrals->imag().cwiseAbs().maxCoeff(),
+                                Eigen::Tensor<double, 0>(this->two_body_integrals->imag().abs().maximum())());
+        }
+        mpi_utils::bcast(max_imag);
         if (max_imag > this->imag_threshold) {
             println(0, "Complex integrals (max imaginary part " << max_imag << "): switching to complex mode");
             this->real = false;
@@ -88,7 +93,11 @@ void ExternalSolver::set_one_body_integrals(OrbitalVector &Phi, MomentumOperator
 }
 
 void ExternalSolver::set_two_body_integrals(OrbitalVector &Phi) {
-    ComplexTensorR4 g = calc_2elintegrals(this->prec, Phi);
+    ComplexTensorR4 g = calc_2elintegrals(this->prec, Phi); // collective; the tensor is valid on the master only
+    if (mrcpp::mpi::wrk_rank != 0) {
+        this->two_body_integrals = std::make_shared<ComplexTensorR4>();
+        return;
+    }
     // enforce v_ijkl = conj(v_klij) (physicist's notation, broken at the level of the MW precision)
     Eigen::array<int, 4> swap_pairs = {2, 3, 0, 1};
     this->two_body_integrals = std::make_shared<ComplexTensorR4>(0.5 * (g + g.shuffle(swap_pairs).conjugate()));

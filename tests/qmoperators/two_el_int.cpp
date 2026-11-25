@@ -76,6 +76,7 @@ TEST_CASE("TwoElInt", "[two_el_int]") {
 
     SECTION("calc_2elintegrals") {
         two_el_int = calc_2elintegrals(prec, Phi);
+        if (mrcpp::mpi::wrk_rank != 0) return; // the tensor is only valid on the master
         REQUIRE(two_el_int(0,0,0,0).real() == Catch::Approx(t0000).margin(prec));
         REQUIRE(two_el_int(0,0,0,0).imag() < thrs);
         REQUIRE(two_el_int(1,0,0,0).real() == Catch::Approx(t1000).margin(prec));
