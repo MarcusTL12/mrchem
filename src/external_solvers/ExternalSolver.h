@@ -65,6 +65,12 @@ public:
     void calculate_lagrange_multipliers();
     void diagonalize_1rdm();
     void calculate_helmholtz_coefficients();
+    /** @brief Dense post-processing for the orbital update on the master, results on all workers
+     *
+     * The master computes the Lagrange multipliers, diagonalizes the 1-RDM and computes the Helmholtz
+     * coefficients and U_dE2; one_rdm, lag_coeff, basis_change, helm_coeff and U_dE2 are then broadcast.
+     * MPI: collective over the worker communicator. Only the master needs the RDMs and integrals. */
+    void prepare_orbital_update();
 
 protected:
     FockBuilder F{};

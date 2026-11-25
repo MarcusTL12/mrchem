@@ -47,6 +47,7 @@ void bcast(double &x, MPI_Comm comm = mrcpp::mpi::comm_wrk);
 void bcast(IntVector &x, MPI_Comm comm = mrcpp::mpi::comm_wrk);
 void bcast(DoubleVector &x, MPI_Comm comm = mrcpp::mpi::comm_wrk);
 void bcast(ComplexMatrix &x, MPI_Comm comm = mrcpp::mpi::comm_wrk);
+void bcast(ComplexTensorR4 &x, MPI_Comm comm = mrcpp::mpi::comm_wrk);
 
 /** @brief Logical OR of `x` over all workers; the result is returned on every worker. */
 bool allreduce_or(bool x, MPI_Comm comm = mrcpp::mpi::comm_wrk);

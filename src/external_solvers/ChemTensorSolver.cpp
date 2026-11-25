@@ -84,6 +84,7 @@ void ChemTensorSolver::broadcast_results() {
     mpi_utils::bcast(this->energy);
     mpi_utils::bcast(this->perm_changed);
     mpi_utils::bcast(this->perm);
+    mpi_utils::bcast(this->perm_cost);
     mpi_utils::bcast(this->real);
 }
 
@@ -161,9 +162,17 @@ void ChemTensorSolver::set_dense_tensors() {
 }
 
 void ChemTensorSolver::set_integrals(OrbitalVector &Phi) {
-    ExternalSolver::set_integrals(Phi);
-    update_site_order();
-    set_dense_tensors();
+    ExternalSolver::set_integrals(Phi); // collective
+    // the DMRG runs on the master only (solve()): only it needs the site order and the dense tensors
+    if (mrcpp::mpi::wrk_rank == 0) {
+        update_site_order();
+        set_dense_tensors();
+    }
+}
+
+void ChemTensorSolver::solve() {
+    if (mrcpp::mpi::wrk_rank == 0) optimize();
+    broadcast_results();
 }
 
 /**

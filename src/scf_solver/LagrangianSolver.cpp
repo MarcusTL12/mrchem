@@ -152,8 +152,7 @@ json LagrangianSolver::optimize(Molecule &mol, FockBuilder &F, ChemTensorSolver 
         // all workers must agree (the check uses rank-local integrals, and the switch below is collective)
         S.set_real(not mpi_utils::allreduce_or(not S.is_real()));
         if (this->real_orbitals and not S.is_real()) set_complex_orbitals(S);
-        S.optimize();
-        S.broadcast_results(); // all workers continue with the master's energy, site order and type
+        S.solve(); // DMRG on the master; all workers continue with the master's energy, site order and type
         if (this->real_orbitals and not S.is_real()) set_complex_orbitals(S);
 
         // check if converged (before the update, so that orbitals and last energy match)
@@ -237,17 +236,10 @@ DoubleVector LagrangianSolver::orbital_update(FockBuilder &F, ChemTensorSolver &
 
     const int L = this->orbitals->size();
 
-    // calculate Lagrange multipliersin the old basis
-    // (otherwise you need also two-boyd integral and rdm in the new basis)
-    S.calculate_lagrange_multipliers();
-
-    // diagonalize 1rdm. change basis of one-body integral, multipliers and orbitals
-    // (two-body integral and rdms not necessary)
-    S.diagonalize_1rdm();
+    // on the master: Lagrange multipliers (old basis), diagonalization of the 1-RDM (new basis for the one-body
+    // integrals, multipliers and orbitals), Helmholtz coefficients and U_dE2; then broadcast to all workers
+    S.prepare_orbital_update();
     std::shared_ptr<ComplexMatrix> basis_change = S.get_basis_change();
-
-    // initialize Helmholtz operator
-    S.calculate_helmholtz_coefficients();
     std::shared_ptr<DoubleVector> ptr_helm_coeff = S.get_helmholtz_coefficients();
     // as in python: positive coefficients (mu imaginary) are not allowed. The check is done here,
     // since HelmholtzVector silently replaces them with -0.5 (needed by the standard SCF solver)

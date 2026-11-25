@@ -50,14 +50,17 @@ public:
     void set_maxiter_lanczos(int maxiter_lanczos) { this->maxiter_lanczos = maxiter_lanczos; }
     void set_tol_split(double tol_split) { this->tol_split = tol_split; }
 
+    /** @brief Integrals (collective); site order and dense tensors on the master only */
     void set_integrals(OrbitalVector &Phi);
+    /** @brief DMRG and RDMs on the master, then broadcast_results(). MPI: collective over the workers. */
+    void solve();
 
     const IntVector &get_site_order() const { return this->perm; }
     double get_site_order_cost() const { return this->perm_cost; }
     bool site_order_changed() const { return this->perm_changed; }
     /** @brief Make the results of optimize() identical on all workers (values of the master).
      *
-     * MPI: collective over the worker communicator; broadcasts energy, site order and the real flag. */
+     * MPI: collective over the worker communicator; broadcasts energy, site order (and its cost) and the real flag. */
     void broadcast_results();
 
     const int* get_bond_dimensions() const { return this->bond_dimensions.data(); }

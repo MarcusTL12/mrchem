@@ -31,6 +31,7 @@
 #include "qmoperators/one_electron/NuclearOperator.h"
 #include "qmoperators/qmoperator_utils.h"
 #include "qmoperators/two_electron/two_electron_utils.h"
+#include "utils/mpi_bcast.h"
 
 namespace mrchem {
 
@@ -91,6 +92,26 @@ void ExternalSolver::set_two_body_integrals(OrbitalVector &Phi) {
     // enforce v_ijkl = conj(v_klij) (physicist's notation, broken at the level of the MW precision)
     Eigen::array<int, 4> swap_pairs = {2, 3, 0, 1};
     this->two_body_integrals = std::make_shared<ComplexTensorR4>(0.5 * (g + g.shuffle(swap_pairs).conjugate()));
+}
+
+void ExternalSolver::prepare_orbital_update() {
+    if (mrcpp::mpi::wrk_rank == 0) {
+        calculate_lagrange_multipliers();
+        diagonalize_1rdm();
+        calculate_helmholtz_coefficients();
+    } else {
+        // the other workers only receive the results
+        if (!this->one_rdm) this->one_rdm = std::make_shared<ComplexMatrix>();
+        if (!this->lag_coeff) this->lag_coeff = std::make_shared<ComplexMatrix>();
+        if (!this->basis_change) this->basis_change = std::make_shared<ComplexMatrix>();
+        if (!this->helm_coeff) this->helm_coeff = std::make_shared<DoubleVector>();
+        if (!this->U_dE2) this->U_dE2 = std::make_shared<ComplexTensorR4>();
+    }
+    mpi_utils::bcast(*this->one_rdm);
+    mpi_utils::bcast(*this->lag_coeff);
+    mpi_utils::bcast(*this->basis_change);
+    mpi_utils::bcast(*this->helm_coeff);
+    mpi_utils::bcast(*this->U_dE2); // full L^4 (transitional, S8 sends each worker only its slices)
 }
 
 void ExternalSolver::calculate_lagrange_multipliers(){
@@ -168,16 +189,12 @@ void ExternalSolver::calculate_helmholtz_coefficients() {
     this->U_dE2 = std::make_shared<ComplexTensorR4>(L, L, L, L); // sum_a U(m,a) * two_rdm(a,j,k,l)
     auto &U_dE2 = *this->U_dE2;
     ComplexTensorR4 U_g(L, L, L, L);    // sum_b conj(U(m,b)) * g(b,j,k,l)
-    U_dE2.setZero();
-    U_g.setZero();
-    for (int m = 0; m < L; m++)
-        for (int a = 0; a < L; a++)
-            for (int j = 0; j < L; j++)
-                for (int k = 0; k < L; k++)
-                    for (int l = 0; l < L; l++) {
-                        U_dE2(m, j, k, l) += U(m, a) * two_rdm(a, j, k, l);
-                        U_g(m, j, k, l) += std::conj(U(m, a)) * two_body_int(a, j, k, l);
-                    }
+    // as GEMMs on the column-major (L x L^3) views of the tensors (first index fastest)
+    const int L3 = L * L * L;
+    Eigen::Map<const ComplexMatrix> two_rdm_mat(two_rdm.data(), L, L3);
+    Eigen::Map<const ComplexMatrix> g_mat(two_body_int.data(), L, L3);
+    Eigen::Map<ComplexMatrix>(U_dE2.data(), L, L3).noalias() = U * two_rdm_mat;
+    Eigen::Map<ComplexMatrix>(U_g.data(), L, L3).noalias() = U.conjugate() * g_mat;
 
     for (int m = 0; m < L; m++) {
         if (std::abs((*this->one_rdm)(m, m)) < 1e-10)

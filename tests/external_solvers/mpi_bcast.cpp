@@ -73,6 +73,21 @@ TEST_CASE("mpi_utils::bcast and allreduce_or", "[mpi_bcast]") {
         REQUIRE(m.cols() == 2);
         REQUIRE(m(2, 1) == ComplexDouble(3.0, -1.5));
     }
+    SECTION("complex rank-4 tensor") {
+        ComplexTensorR4 t;
+        if (master) {
+            t.resize(2, 3, 1, 2);
+            t.setZero();
+            t(1, 2, 0, 1) = ComplexDouble(4.0, -2.5);
+        }
+        mpi_utils::bcast(t);
+        REQUIRE(t.dimension(0) == 2);
+        REQUIRE(t.dimension(1) == 3);
+        REQUIRE(t.dimension(2) == 1);
+        REQUIRE(t.dimension(3) == 2);
+        REQUIRE(t(1, 2, 0, 1) == ComplexDouble(4.0, -2.5));
+        REQUIRE(t(0, 0, 0, 0) == ComplexDouble(0.0, 0.0));
+    }
     SECTION("allreduce_or") {
         const bool only_last = (mrcpp::mpi::wrk_rank == mrcpp::mpi::wrk_size - 1);
         REQUIRE(mpi_utils::allreduce_or(only_last));

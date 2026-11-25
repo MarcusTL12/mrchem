@@ -66,6 +66,17 @@ void bcast(ComplexMatrix &x, MPI_Comm comm) {
     if (x.size() > 0) MPI_Bcast(reinterpret_cast<double *>(x.data()), 2 * static_cast<int>(x.size()), MPI_DOUBLE, 0, comm);
 }
 
+void bcast(ComplexTensorR4 &x, MPI_Comm comm) {
+    int dims[4];
+    for (int i = 0; i < 4; i++) dims[i] = static_cast<int>(x.dimension(i));
+    MPI_Bcast(dims, 4, MPI_INT, 0, comm);
+    bool same = true;
+    for (int i = 0; i < 4; i++) same = same and (x.dimension(i) == dims[i]);
+    if (not same) x.resize(dims[0], dims[1], dims[2], dims[3]);
+    // complex numbers are sent as pairs of doubles; the data is contiguous (column-major)
+    if (x.size() > 0) MPI_Bcast(reinterpret_cast<double *>(x.data()), 2 * static_cast<int>(x.size()), MPI_DOUBLE, 0, comm);
+}
+
 bool allreduce_or(bool x, MPI_Comm comm) {
     int in = x ? 1 : 0, out = 0;
     MPI_Allreduce(&in, &out, 1, MPI_INT, MPI_LOR, comm);
@@ -80,6 +91,7 @@ void bcast(double &, MPI_Comm) {}
 void bcast(IntVector &, MPI_Comm) {}
 void bcast(DoubleVector &, MPI_Comm) {}
 void bcast(ComplexMatrix &, MPI_Comm) {}
+void bcast(ComplexTensorR4 &, MPI_Comm) {}
 bool allreduce_or(bool x, MPI_Comm) {
     return x;
 }
