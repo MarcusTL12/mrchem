@@ -24,12 +24,12 @@
  */
 
 #include "two_electron_utils.h"
-#include "qmfunctions/density_utils.h"
-#include <MRCPP/Parallel>
-#include "utils/mpi_bcast.h"
 #include "MRCPP/MWOperators"
 #include "MRCPP/Printer"
 #include "MRCPP/Timer"
+#include "qmfunctions/density_utils.h"
+#include "utils/mpi_bcast.h"
+#include <MRCPP/Parallel>
 
 using mrcpp::Printer;
 using mrcpp::Timer;
@@ -44,8 +44,8 @@ Eigen::Tensor<std::complex<double>, 4> calc_2elintegrals(double prec, OrbitalVec
     mrcpp::BankAccount PhiBank; // to put the orbitals
 
     int N = Phi.size();
-    double precf = prec / (10*std::sqrt(1 * Phi.size()));
-    double prec_m2 = precf / 100; // second multiplication
+    double precf = prec / (10 * std::sqrt(1 * Phi.size()));
+    double prec_m2 = precf / 100;          // second multiplication
     mrcpp::PoissonOperator P(*MRA, precf); // one operator for all pairs (same precision)
 
     // all orbitals on every worker (own ones are local, the others come from the bank); no bank: Phi itself
@@ -70,14 +70,19 @@ Eigen::Tensor<std::complex<double>, 4> calc_2elintegrals(double prec, OrbitalVec
         const size_t start = records.size();
         records.resize(start + 1 + static_cast<size_t>(N) * N);
         records[start] = ComplexDouble(static_cast<double>(i * N + j), 0.0);
+        t_ovr.resume();
+        std::vector<Orbital> l_Vij(N);
         for (int l = 0; l < N; l++) {
-            Orbital lVij = Phi_loc[l].paramCopy(true);
-            t_ovr.resume();
-            mrcpp::multiply(lVij, Phi_loc[l], Vij, prec_m2, true, true);
-            for (int k = 0; k < N; k++) records[start + 1 + k + static_cast<size_t>(N) * l] = mrcpp::dot(Phi_loc[k], lVij);
-            t_ovr.stop();
-            lVij.free();
+            l_Vij[l] = Phi_loc[l].paramCopy(true);
+            mrcpp::multiply(l_Vij[l], Phi_loc[l], Vij, prec_m2, true, true); // OpenMP inside
         }
+        // mrcpp::dot is serial (exact summation order), so the N^2 independent overlaps are spread over the threads
+#pragma omp parallel for collapse(2) schedule(dynamic)
+        for (int l = 0; l < N; l++) {
+            for (int k = 0; k < N; k++) records[start + 1 + k + static_cast<size_t>(N) * l] = mrcpp::dot(Phi_loc[k], l_Vij[l]);
+        }
+        for (auto &lVij : l_Vij) lVij.free();
+        t_ovr.stop();
     };
 
     // first we compute density to be used so we know were the orbitals are. This
@@ -197,7 +202,7 @@ Eigen::Tensor<std::complex<double>, 4> calc_2elintegrals(double prec, OrbitalVec
 
     t_offd.stop();
     for (int i = 0; i < N; i++)
-        if (not (mrcpp::mpi::bank_size <= 0 or mrcpp::mpi::my_func(i))) Phi_loc[i].free();
+        if (not(mrcpp::mpi::bank_size <= 0 or mrcpp::mpi::my_func(i))) Phi_loc[i].free();
 
     // only the master holds the N^4 tensor
     t_get.resume();
@@ -248,8 +253,8 @@ bool ij_r12(double prec, Orbital rho, Orbital phi_i, Orbital phi_j, Orbital &V_i
     Timer timer_tot;
 
     // set precisions
-    double prec_m1 = prec / 10;  // first multiplication
-    double prec_p = prec * 10;   // Poisson application
+    double prec_m1 = prec / 10; // first multiplication
+    double prec_p = prec * 10;  // Poisson application
 
     // compute rho_ij = phi_i^dagger * phi_j
     // if the product is smaller than the target precision,
@@ -268,8 +273,8 @@ bool ij_r12(double prec, Orbital rho, Orbital phi_i, Orbital phi_j, Orbital &V_i
     mrcpp::FunctionTreeVector<3, ComplexDouble> phi_opt_vec_cplx;
     if (RealOrbitals) {
         if (rho.isreal() and rho.getNNodes() > 0) phi_opt_vec_real.emplace_back(1.0, rho.CompD[0]);
-        if (phi_j.isreal() and  phi_j.getNNodes() > 0) phi_opt_vec_real.emplace_back(1.0, phi_j.CompD[0]);
-        if (phi_i.isreal() and  &phi_i != &phi_j and phi_i.getNNodes() > 0) phi_opt_vec_real.emplace_back(1.0, phi_i.CompD[0]);
+        if (phi_j.isreal() and phi_j.getNNodes() > 0) phi_opt_vec_real.emplace_back(1.0, phi_j.CompD[0]);
+        if (phi_i.isreal() and &phi_i != &phi_j and phi_i.getNNodes() > 0) phi_opt_vec_real.emplace_back(1.0, phi_i.CompD[0]);
     } else {
         if (rho.iscomplex()) phi_opt_vec_cplx.emplace_back(1.0, rho.CompC[0]);
         if (phi_j.iscomplex()) phi_opt_vec_cplx.emplace_back(1.0, phi_j.CompC[0]);
@@ -287,4 +292,4 @@ bool ij_r12(double prec, Orbital rho, Orbital phi_i, Orbital phi_j, Orbital &V_i
 
     return false;
 }
-}
+} // namespace mrchem
