@@ -127,11 +127,12 @@ TEST_CASE("mpi_utils::bcast and allreduce_or", "[mpi_bcast]") {
         REQUIRE(i == 7);
     }
     SECTION("boost_threads") {
-        REQUIRE(mpi_utils::boost_threads(16, 16, 512) == 256); // whole node (256 cores)
-        REQUIRE(mpi_utils::boost_threads(16, 16, 256) == 128); // capped at half the logical cpus
-        REQUIRE(mpi_utils::boost_threads(4, 1, 24) == 4);      // alone on the node: no boost
-        REQUIRE(mpi_utils::boost_threads(8, 4, 8) == 8);       // cap below n_threads: keep n_threads
-        REQUIRE(mpi_utils::boost_threads(2, 3, 24) == 6);
+        REQUIRE(mpi_utils::boost_threads(16, 16) == 256); // the threads of all workers on the node
+        REQUIRE(mpi_utils::boost_threads(4, 1) == 4);     // alone on the node: no boost
+        REQUIRE(mpi_utils::boost_threads(2, 3) == 6);
+        REQUIRE(mpi_utils::boost_threads(3, 0) == 3);         // share_size 0 treated as 1
+        REQUIRE(mpi_utils::boost_threads(16, 16, 64) == 64);  // explicit request wins
+        REQUIRE(mpi_utils::boost_threads(16, 16, -1) == 256); // invalid request: automatic
     }
     SECTION("allreduce_or") {
         const bool only_last = (mrcpp::mpi::wrk_rank == mrcpp::mpi::wrk_size - 1);

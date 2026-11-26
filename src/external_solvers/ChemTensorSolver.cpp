@@ -36,10 +36,10 @@ extern "C" {
 #include "rng.h"
 }
 
+#include <cstdlib>
 #include <limits>
 #include <random>
 #include <sstream>
-#include <thread>
 
 #include <MRCPP/Parallel>
 #include <MRCPP/Printer>
@@ -176,12 +176,15 @@ void ChemTensorSolver::set_integrals(OrbitalVector &Phi) {
  *
  * MPI: collective over the workers. Only the master runs optimize(); meanwhile the other workers wait in
  * sleepy_barrier() (low CPU use), and the master borrows the threads of the workers on its node (thread boost,
- * casscf_mpi_plan.md 1.4). The thread count is restored before any collective.
+ * casscf_mpi_plan.md 1.4); env MRCHEM_DMRG_THREADS > 0 sets the count directly. The thread count is restored
+ * before any collective.
  */
 void ChemTensorSolver::solve() {
     if (mrcpp::mpi::wrk_rank == 0) {
         const int nt = mrcpp_get_num_threads();
-        const int nt_dmrg = mpi_utils::boost_threads(nt, mrcpp::mpi::share_size, static_cast<int>(std::thread::hardware_concurrency()));
+        const char *env = std::getenv("MRCHEM_DMRG_THREADS"); // optional override of the thread boost
+        const int requested = (env != nullptr) ? std::atoi(env) : 0;
+        const int nt_dmrg = mpi_utils::boost_threads(nt, mrcpp::mpi::share_size, requested);
         if (nt_dmrg != nt) {
             println(2, "DMRG threads: " << nt_dmrg << " (thread boost from " << nt << ")");
             mrcpp::set_max_threads(nt_dmrg);

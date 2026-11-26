@@ -163,9 +163,9 @@ bool allreduce_or(bool x, MPI_Comm) {
 
 #endif
 
-int boost_threads(int n_threads, int share_size, int n_procs) {
-    const int cap = std::max(n_threads, n_procs / 2);
-    return std::max(1, std::min(n_threads * std::max(1, share_size), cap));
+int boost_threads(int n_threads, int share_size, int requested) {
+    if (requested > 0) return requested;
+    return std::max(1, n_threads * std::max(1, share_size));
 }
 
 } // namespace mpi_utils

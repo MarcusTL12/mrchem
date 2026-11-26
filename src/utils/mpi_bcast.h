@@ -74,11 +74,11 @@ void sleepy_barrier(MPI_Comm comm = mrcpp::mpi::comm_wrk);
 
 /** @brief Number of OpenMP threads for a master-only region (thread boost).
  *
- * The master may use the threads of the workers that share its node and wait in sleepy_barrier():
- * n_threads * share_size, but at most max(n_threads, n_procs / 2) (MRCPP assumes half of the logical cpus are cores).
- * Not collective (a pure function).
+ * requested > 0 (env MRCHEM_DMRG_THREADS) is used as given. Otherwise the master takes the threads of the
+ * workers that share its node and wait in sleepy_barrier(): n_threads * share_size. No hardware guess, so the
+ * node never runs more threads than the workers used before. Not collective (a pure function).
  */
-int boost_threads(int n_threads, int share_size, int n_procs);
+int boost_threads(int n_threads, int share_size, int requested = 0);
 
 } // namespace mpi_utils
 } // namespace mrchem
