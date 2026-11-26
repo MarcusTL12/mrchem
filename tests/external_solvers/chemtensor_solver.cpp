@@ -25,7 +25,9 @@
 
 #include "catch2/catch_all.hpp"
 
+#include <chrono>
 #include <cmath>
+#include <cstdlib>
 #include <random>
 #include <vector>
 
@@ -208,6 +210,26 @@ TEST_CASE("ChemTensorSolver: result does not depend on the site order", "[chemte
             }
         }
     }
+}
+
+// Hidden benchmark (not run by ctest): DMRG time of one optimize() on a synthetic Hamiltonian, to measure thread scaling.
+// Usage: OMP_NUM_THREADS=t BENCH_N=40 BENCH_VDIM=300 mrchem-tests "[chemtensor_bench]"
+TEST_CASE("ChemTensorSolver: DMRG timing benchmark", "[chemtensor_bench][.]") {
+    const char *sn = std::getenv("BENCH_N");
+    const char *sv = std::getenv("BENCH_VDIM");
+    const int N = sn ? std::atoi(sn) : 30;
+    const int vdim = sv ? std::atoi(sv) : 300;
+    IntVector lab = IntVector::LinSpaced(N, 0, N - 1);
+    const Ham H = make_ham(N, lab, false, 99);
+    Fixture fx;
+    ChemTensorSolver S(fx.Phi, fx.F, fx.nucs, N, 0, make_dict("none", vdim));
+    Tester::set_integrals(S, H.h, H.g, true);
+    const auto t0 = std::chrono::steady_clock::now();
+    S.optimize();
+    const double sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+    std::cout << "BENCH N=" << N << " vdim=" << vdim << " threads=" << (std::getenv("OMP_NUM_THREADS") ? std::getenv("OMP_NUM_THREADS") : "?") << " optimize_seconds=" << sec << " E=" << S.get_energy()
+              << std::endl;
+    REQUIRE(std::isfinite(S.get_energy()));
 }
 
 TEST_CASE("ChemTensorSolver: print paths at level 3 and width 75", "[chemtensor_solver]") {
