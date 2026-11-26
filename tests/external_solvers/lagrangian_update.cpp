@@ -25,10 +25,12 @@
 
 #include "catch2/catch_all.hpp"
 
+#include <chrono>
 #include <cmath>
 #include <random>
 
 #include <MRCPP/MWFunctions>
+#include <MRCPP/MWOperators>
 
 #include "qmfunctions/Orbital.h"
 #include "qmfunctions/density_utils.h"
@@ -42,7 +44,14 @@ namespace lagrangian_update_tests {
 
 namespace {
 /** Serial oracle: today's (v0) two-body update loop, kept here verbatim as a reference for the distributed versions. */
-void oracle_two_body(double prec, double threshold, bool real_orbitals, OrbitalVector &orbitals, const ComplexMatrix &one_rdm, const ComplexMatrix &lag_coeff, const ComplexTensorR4 &U_dE2, OrbitalVector &new_Phi) {
+void oracle_two_body(double prec,
+                     double threshold,
+                     bool real_orbitals,
+                     OrbitalVector &orbitals,
+                     const ComplexMatrix &one_rdm,
+                     const ComplexMatrix &lag_coeff,
+                     const ComplexTensorR4 &U_dE2,
+                     OrbitalVector &new_Phi) {
     const int L = orbitals.size();
     auto coeff = [real_orbitals](ComplexDouble c) { return real_orbitals ? ComplexDouble(c.real(), 0.0) : c; };
     Density rho;
@@ -142,6 +151,29 @@ TEST_CASE("Lagrangian two-body update vs serial oracle", "[lagrangian_update]") 
         mrcpp::add(dL, 1.0, test[m], -1.0, test_bL[m], -1.0);
         CHECK(d1.norm() < 1.0e-9);
         CHECK(dL.norm() < 1.0e-9);
+    }
+}
+
+// Hidden benchmark (not run by ctest): cost of building a PoissonOperator versus a whole pair potential ij_r12 (S11 profile).
+TEST_CASE("Pair potential timing: PoissonOperator construction vs ij_r12", "[ij_r12_bench][.]") {
+    if (mrcpp::mpi::is_bank) return;
+    using clk = std::chrono::steady_clock;
+    auto secs = [](clk::time_point a) { return std::chrono::duration<double>(clk::now() - a).count(); };
+    OrbitalVector Phi = make_orbitals(3);
+    Density rho;
+    density::compute(1.0e-4, rho, Phi, DensityType::Total);
+    for (double prec : {1.0e-4, 1.0e-5, 1.0e-6}) {
+        for (int rep = 0; rep < 3; rep++) {
+            auto t0 = clk::now();
+            { mrcpp::PoissonOperator P(*MRA, prec); }
+            const double t_op = secs(t0);
+            Orbital g = Phi[0].paramCopy(true);
+            t0 = clk::now();
+            ij_r12(prec, rho, Phi[0], Phi[1], g);
+            const double t_ij = secs(t0);
+            std::cout << "BENCH prec=" << prec << " rep=" << rep << " PoissonOperator=" << t_op << " s, ij_r12(total incl. operator)=" << t_ij << " s" << std::endl;
+            g.free();
+        }
     }
 }
 

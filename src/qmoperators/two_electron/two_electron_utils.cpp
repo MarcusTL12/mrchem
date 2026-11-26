@@ -46,6 +46,7 @@ Eigen::Tensor<std::complex<double>, 4> calc_2elintegrals(double prec, OrbitalVec
     int N = Phi.size();
     double precf = prec / (10*std::sqrt(1 * Phi.size()));
     double prec_m2 = precf / 100; // second multiplication
+    mrcpp::PoissonOperator P(*MRA, precf); // one operator for all pairs (same precision)
 
     // all orbitals on every worker (own ones are local, the others come from the bank); no bank: Phi itself
     std::vector<Orbital> Phi_loc(N);
@@ -94,7 +95,7 @@ Eigen::Tensor<std::complex<double>, 4> calc_2elintegrals(double prec, OrbitalVec
         if (!mrcpp::mpi::my_func(i)) continue;
         Orbital Vij = phi_i.paramCopy(true);
         t_calc.resume();
-        bool skipped = ij_r12(precf, rho, phi_i, phi_i, Vij);
+        bool skipped = ij_r12(precf, rho, phi_i, phi_i, Vij, P);
         t_calc.stop();
         if (not skipped) contract(i, i, Vij);
         Vij.free();
@@ -184,9 +185,9 @@ Eigen::Tensor<std::complex<double>, 4> calc_2elintegrals(double prec, OrbitalVec
                 // in the off-diagonal blocks: swap the orbitals in that case (V_ji = conj(V_ij) for complex orbitals)
                 bool skipped;
                 if (iorb >= jorb)
-                    skipped = ij_r12(precf, rho, Phi_loc[iorb], Phi_loc[jorb], Vij);
+                    skipped = ij_r12(precf, rho, Phi_loc[iorb], Phi_loc[jorb], Vij, P);
                 else
-                    skipped = ij_r12(precf, rho, Phi_loc[jorb], Phi_loc[iorb], Vij);
+                    skipped = ij_r12(precf, rho, Phi_loc[jorb], Phi_loc[iorb], Vij, P);
                 t_calc.stop();
                 if (not skipped) contract(std::max(iorb, jorb), std::min(iorb, jorb), Vij);
                 Vij.free();
@@ -239,8 +240,12 @@ Eigen::Tensor<std::complex<double>, 4> calc_2elintegrals(double prec, OrbitalVec
 }
 
 bool ij_r12(double prec, Orbital rho, Orbital phi_i, Orbital phi_j, Orbital &V_ij) {
-    Timer timer_tot;
     mrcpp::PoissonOperator P(*MRA, prec);
+    return ij_r12(prec, rho, phi_i, phi_j, V_ij, P);
+}
+
+bool ij_r12(double prec, Orbital rho, Orbital phi_i, Orbital phi_j, Orbital &V_ij, mrcpp::PoissonOperator &P) {
+    Timer timer_tot;
 
     // set precisions
     double prec_m1 = prec / 10;  // first multiplication

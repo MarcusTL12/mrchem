@@ -30,6 +30,10 @@
 #include "qmfunctions/qmfunction_fwd.h"
 #include <unsupported/Eigen/CXX11/Tensor>
 
+namespace mrcpp {
+class PoissonOperator;
+}
+
 namespace mrchem {
 /** @brief precomputes all the <ik|1/r12|jl> 2-electron integrals
  *
@@ -45,9 +49,16 @@ Eigen::Tensor<std::complex<double>, 4> calc_2elintegrals(double prec, OrbitalVec
  *  \param[in] phi_j orbital to be multiplied by phi_i^dag
  *  \param[in] rho is normally the density. It is used to screen the final output
  *  \param[out] V_ij is the resulting potential function
-  *
+ *
  * Computes the product of complex conjugate of phi_i and phi_j,
  * then applies the Poisson operator. The result is given in V_ij.
  */
 bool ij_r12(double prec, Orbital rho, Orbital phi_i, Orbital phi_j, Orbital &V_ij);
-}
+
+/** @brief Same as above, with a Poisson operator built by the caller for precision `prec` (reused for many pairs).
+ *
+ * The operator must have been constructed as `mrcpp::PoissonOperator P(*MRA, prec)` with the same `prec`; the result is then
+ * identical to the version that builds its own operator.
+ */
+bool ij_r12(double prec, Orbital rho, Orbital phi_i, Orbital phi_j, Orbital &V_ij, mrcpp::PoissonOperator &P);
+} // namespace mrchem
