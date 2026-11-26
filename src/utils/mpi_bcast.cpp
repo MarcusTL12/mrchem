@@ -25,7 +25,10 @@
 
 #include "mpi_bcast.h"
 
+#include <algorithm>
+#include <chrono>
 #include <limits>
+#include <thread>
 
 #include <MRCPP/Printer>
 
@@ -125,7 +128,20 @@ bool allreduce_or(bool x, MPI_Comm comm) {
     return out != 0;
 }
 
+void sleepy_barrier(MPI_Comm comm) {
+    MPI_Request req;
+    MPI_Ibarrier(comm, &req);
+    int done = 0;
+    MPI_Test(&req, &done, MPI_STATUS_IGNORE);
+    while (not done) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        MPI_Test(&req, &done, MPI_STATUS_IGNORE);
+    }
+}
+
 #else
+
+void sleepy_barrier(MPI_Comm) {}
 
 void bcast(bool &, MPI_Comm) {}
 void bcast(int &, MPI_Comm) {}
@@ -146,6 +162,11 @@ bool allreduce_or(bool x, MPI_Comm) {
 }
 
 #endif
+
+int boost_threads(int n_threads, int share_size, int n_procs) {
+    const int cap = std::max(n_threads, n_procs / 2);
+    return std::max(1, std::min(n_threads * std::max(1, share_size), cap));
+}
 
 } // namespace mpi_utils
 } // namespace mrchem

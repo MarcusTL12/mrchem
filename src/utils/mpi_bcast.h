@@ -65,5 +65,20 @@ void gatherv(const std::vector<ComplexDouble> &send, std::vector<ComplexDouble> 
 /** @brief Logical OR of `x` over all workers; the result is returned on every worker. */
 bool allreduce_or(bool x, MPI_Comm comm = mrcpp::mpi::comm_wrk);
 
+/** @brief Barrier that waits with little CPU use (MPI_Ibarrier, then MPI_Test with short sleeps).
+ *
+ * Used after a master-only region (the DMRG), so that the waiting workers free their cores for the master's
+ * threads instead of busy-polling inside the next collective.
+ */
+void sleepy_barrier(MPI_Comm comm = mrcpp::mpi::comm_wrk);
+
+/** @brief Number of OpenMP threads for a master-only region (thread boost).
+ *
+ * The master may use the threads of the workers that share its node and wait in sleepy_barrier():
+ * n_threads * share_size, but at most max(n_threads, n_procs / 2) (MRCPP assumes half of the logical cpus are cores).
+ * Not collective (a pure function).
+ */
+int boost_threads(int n_threads, int share_size, int n_procs);
+
 } // namespace mpi_utils
 } // namespace mrchem

@@ -25,6 +25,9 @@
 
 #include "catch2/catch_all.hpp"
 
+#include <chrono>
+#include <thread>
+
 #include "utils/mpi_bcast.h"
 
 using namespace mrchem;
@@ -114,6 +117,21 @@ TEST_CASE("mpi_utils::bcast and allreduce_or", "[mpi_bcast]") {
                 for (int i = 0; i <= r; i++) REQUIRE(recv[pos++] == ComplexDouble(10.0 * r + i, -1.0 * r));
             REQUIRE(recv.size() == pos);
         }
+    }
+    SECTION("sleepy_barrier") {
+        // the master arrives late; everyone must leave the barrier and the next collective must still match
+        if (master) std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        mpi_utils::sleepy_barrier();
+        int i = master ? 7 : -1;
+        mpi_utils::bcast(i);
+        REQUIRE(i == 7);
+    }
+    SECTION("boost_threads") {
+        REQUIRE(mpi_utils::boost_threads(16, 16, 512) == 256); // whole node (256 cores)
+        REQUIRE(mpi_utils::boost_threads(16, 16, 256) == 128); // capped at half the logical cpus
+        REQUIRE(mpi_utils::boost_threads(4, 1, 24) == 4);      // alone on the node: no boost
+        REQUIRE(mpi_utils::boost_threads(8, 4, 8) == 8);       // cap below n_threads: keep n_threads
+        REQUIRE(mpi_utils::boost_threads(2, 3, 24) == 6);
     }
     SECTION("allreduce_or") {
         const bool only_last = (mrcpp::mpi::wrk_rank == mrcpp::mpi::wrk_size - 1);

@@ -39,6 +39,7 @@ extern "C" {
 #include <limits>
 #include <random>
 #include <sstream>
+#include <thread>
 
 #include <MRCPP/Parallel>
 #include <MRCPP/Printer>
@@ -170,8 +171,25 @@ void ChemTensorSolver::set_integrals(OrbitalVector &Phi) {
     }
 }
 
+/**
+ * @brief DMRG on the master, then the results to all workers
+ *
+ * MPI: collective over the workers. Only the master runs optimize(); meanwhile the other workers wait in
+ * sleepy_barrier() (low CPU use), and the master borrows the threads of the workers on its node (thread boost,
+ * casscf_mpi_plan.md 1.4). The thread count is restored before any collective.
+ */
 void ChemTensorSolver::solve() {
-    if (mrcpp::mpi::wrk_rank == 0) optimize();
+    if (mrcpp::mpi::wrk_rank == 0) {
+        const int nt = mrcpp_get_num_threads();
+        const int nt_dmrg = mpi_utils::boost_threads(nt, mrcpp::mpi::share_size, static_cast<int>(std::thread::hardware_concurrency()));
+        if (nt_dmrg != nt) {
+            println(2, "DMRG threads: " << nt_dmrg << " (thread boost from " << nt << ")");
+            mrcpp::set_max_threads(nt_dmrg);
+        }
+        optimize();
+        if (nt_dmrg != nt) mrcpp::set_max_threads(nt);
+    }
+    mpi_utils::sleepy_barrier();
     broadcast_results();
 }
 
